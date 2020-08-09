@@ -7,17 +7,17 @@ import (
 	"testing"
 )
 
-type KeyPoolStub struct {
+type KeySourceStub struct {
 }
 
-func (p KeyPoolStub) Pop() (privKey *rsa.PrivateKey) {
+func (p KeySourceStub) Pop() (privKey *rsa.PrivateKey) {
 	privKey, _ = rsa.GenerateKey(rand.Reader, 2048)
 	return
 }
 
 func TestCreateKeys(t *testing.T) {
 	keyStore := KeyStore{
-		source: KeyPoolStub{},
+		source: KeySourceStub{},
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
 		got := keyStore.CreateKeys("scope")

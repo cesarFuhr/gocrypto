@@ -10,12 +10,12 @@ type Keys struct {
 	Pub   *rsa.PublicKey
 }
 
-type KeyPool interface {
+type KeySource interface {
 	Pop() *rsa.PrivateKey
 }
 
 type KeyStore struct {
-	source KeyPool
+	source KeySource
 }
 
 func (s *KeyStore) CreateKeys(scope string) Keys {
