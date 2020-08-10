@@ -13,7 +13,7 @@ type Keys struct {
 }
 
 type KeySource interface {
-	Pop() *rsa.PrivateKey
+	Take() *rsa.PrivateKey
 }
 
 type KeyStore struct {
@@ -22,7 +22,7 @@ type KeyStore struct {
 
 func (s *KeyStore) CreateKeys(scope string, expiration time.Time) Keys {
 	keys := Keys{}
-	keys.Priv = s.source.Pop()
+	keys.Priv = s.source.Take()
 	keys.Pub = &keys.Priv.PublicKey
 	keys.Scope = scope
 	keys.Expiration = expiration

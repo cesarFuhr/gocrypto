@@ -11,7 +11,7 @@ import (
 type KeySourceStub struct {
 }
 
-func (p KeySourceStub) Pop() (privKey *rsa.PrivateKey) {
+func (p KeySourceStub) Take() (privKey *rsa.PrivateKey) {
 	privKey, _ = rsa.GenerateKey(rand.Reader, 2048)
 	return
 }
