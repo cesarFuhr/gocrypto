@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type KeySourceStub struct {
@@ -20,7 +21,7 @@ func TestCreateKeys(t *testing.T) {
 		source: KeySourceStub{},
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
-		got := keyStore.CreateKeys("scope")
+		got := keyStore.CreateKeys("scope", time.Now())
 		want := Keys{}
 		want.Priv, _ = rsa.GenerateKey(rand.Reader, 2048)
 		want.Pub = &want.Priv.PublicKey
@@ -29,8 +30,14 @@ func TestCreateKeys(t *testing.T) {
 		assertType(t, got.Priv, want.Priv)
 		assertType(t, got.Pub, want.Pub)
 	})
-	t.Run("returned Keys should have the scope information", func(t *testing.T) {
-		keys := keyStore.CreateKeys("scope")
+	t.Run("Should return expiration date", func(t *testing.T) {
+		key := keyStore.CreateKeys("scope", time.Now().AddDate(0, 0, 1))
+		got := key.Expiration
+
+		assertTime(t, got, time.Now().AddDate(0, 0, 1))
+	})
+	t.Run("returned Keys should have the scope property", func(t *testing.T) {
+		keys := keyStore.CreateKeys("scope", time.Now())
 		got := keys.Scope
 		want := "scope"
 
@@ -49,5 +56,12 @@ func assertValue(t *testing.T, got, want string) {
 	t.Helper()
 	if got != want {
 		t.Errorf("got %q want %q", got, want)
+	}
+}
+
+func assertTime(t *testing.T, got, want time.Time) {
+	t.Helper()
+	if got.Round(time.Second) != want.Round(time.Second) {
+		t.Errorf("got %v want %v", got, want)
 	}
 }

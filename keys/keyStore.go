@@ -2,12 +2,14 @@ package keys
 
 import (
 	"crypto/rsa"
+	"time"
 )
 
 type Keys struct {
-	Scope string
-	Priv  *rsa.PrivateKey
-	Pub   *rsa.PublicKey
+	Scope      string
+	Expiration time.Time
+	Priv       *rsa.PrivateKey
+	Pub        *rsa.PublicKey
 }
 
 type KeySource interface {
@@ -18,10 +20,11 @@ type KeyStore struct {
 	source KeySource
 }
 
-func (s *KeyStore) CreateKeys(scope string) Keys {
+func (s *KeyStore) CreateKeys(scope string, expiration time.Time) Keys {
 	keys := Keys{}
 	keys.Priv = s.source.Pop()
 	keys.Pub = &keys.Priv.PublicKey
 	keys.Scope = scope
+	keys.Expiration = expiration
 	return keys
 }
