@@ -30,6 +30,7 @@ type KeyStore struct {
 	repo   KeyRepository
 }
 
+// CreateKey Creates a Key, scoping it and setting the expiration
 func (s *KeyStore) CreateKey(scope string, expiration time.Time) Key {
 	newKey := s.source.Take()
 	key := Key{
@@ -45,6 +46,7 @@ func (s *KeyStore) CreateKey(scope string, expiration time.Time) Key {
 	return key
 }
 
+// FindScopedKey Find a key by ID within the scope
 func (s *KeyStore) FindScopedKey(keyID string, scope string) (Key, error) {
 	key, err := s.repo.FindKey(keyID)
 	if err != nil {
