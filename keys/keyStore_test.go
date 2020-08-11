@@ -8,21 +8,41 @@ import (
 	"time"
 )
 
+type KeyRepositoryStub struct {
+	store map[string]Key
+}
+
+func (r *KeyRepositoryStub) FindKey(keyID string) (Key, error) {
+	key, ok := r.store[keyID]
+	if ok == false {
+		return Key{}, KeyNotFoundError
+	}
+	return key, nil
+}
+
+func (r *KeyRepositoryStub) InsertKey(key Key) error {
+	r.store[key.ID] = key
+	return nil
+}
+
 type KeySourceStub struct {
 }
 
+var mockKeys, _ = rsa.GenerateKey(rand.Reader, 2048)
+
 func (p KeySourceStub) Take() (privKey *rsa.PrivateKey) {
-	privKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+	privKey = mockKeys
 	return
 }
 
-func TestCreateKeys(t *testing.T) {
+func TestCreateKey(t *testing.T) {
 	keyStore := KeyStore{
 		source: KeySourceStub{},
+		repo:   &KeyRepositoryStub{map[string]Key{}},
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
-		got := keyStore.CreateKeys("scope", time.Now())
-		want := Keys{}
+		got := keyStore.CreateKey("scope", time.Now())
+		want := Key{}
 		want.Priv, _ = rsa.GenerateKey(rand.Reader, 2048)
 		want.Pub = &want.Priv.PublicKey
 
@@ -31,17 +51,43 @@ func TestCreateKeys(t *testing.T) {
 		assertType(t, got.Pub, want.Pub)
 	})
 	t.Run("Should return expiration date", func(t *testing.T) {
-		key := keyStore.CreateKeys("scope", time.Now().AddDate(0, 0, 1))
+		key := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
 		got := key.Expiration
 
 		assertTime(t, got, time.Now().AddDate(0, 0, 1))
 	})
 	t.Run("returned Keys should have the scope property", func(t *testing.T) {
-		keys := keyStore.CreateKeys("scope", time.Now())
-		got := keys.Scope
+		key := keyStore.CreateKey("scope", time.Now())
+		got := key.Scope
 		want := "scope"
 
-		assertValue(t, got, want)
+		assertString(t, got, want)
+	})
+}
+
+func TestFindScopedKeys(t *testing.T) {
+	keyStore := KeyStore{
+		source: KeySourceStub{},
+		repo:   &KeyRepositoryStub{map[string]Key{}},
+	}
+	t.Run("Should return a keypair", func(t *testing.T) {
+		got, _ := keyStore.FindScopedKey("id", "scope")
+		want := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
+
+		assertType(t, got, want)
+	})
+	t.Run("Should return the correct keypair", func(t *testing.T) {
+		key := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
+		found, _ := keyStore.FindScopedKey(key.ID, "scope")
+
+		assertString(t, found.ID, key.ID)
+	})
+	t.Run("Should return an error if key was not found", func(t *testing.T) {
+		_, err := keyStore.FindScopedKey("inexistent key.ID", "scope")
+
+		if err != KeyNotFoundError {
+			t.Fatalf("was expecting a KeyNotFoundError and didn't received")
+		}
 	})
 }
 
@@ -52,7 +98,7 @@ func assertType(t *testing.T, got, want interface{}) {
 	}
 }
 
-func assertValue(t *testing.T, got, want string) {
+func assertString(t *testing.T, got, want string) {
 	t.Helper()
 	if got != want {
 		t.Errorf("got %q want %q", got, want)
