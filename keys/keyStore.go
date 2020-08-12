@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Key Representation of a rsa key with scope, ID and expiration
 type Key struct {
 	Scope      string
 	ID         string
@@ -16,15 +17,18 @@ type Key struct {
 	Pub        *rsa.PublicKey
 }
 
+// KeySource Key provider of the KeyStore
 type KeySource interface {
 	Take() *rsa.PrivateKey
 }
 
+// KeyRepository Persistency interface to serve the KeyStore
 type KeyRepository interface {
 	FindKey(string) (Key, error)
 	InsertKey(Key) error
 }
 
+// KeyStore Stores keys giving scopes and expiration
 type KeyStore struct {
 	source KeySource
 	repo   KeyRepository
@@ -46,16 +50,33 @@ func (s *KeyStore) CreateKey(scope string, expiration time.Time) Key {
 	return key
 }
 
-// FindScopedKey Find a key by ID within the scope
-func (s *KeyStore) FindScopedKey(keyID string, scope string) (Key, error) {
+// ErrKeyNotFound the Key with the requested ID was not found in this store
+var ErrKeyNotFound = errors.New("requested key was not found")
+
+// ErrKeyOutOfScope the Key was found but is not within the requested scope
+var ErrKeyOutOfScope = errors.New("requested key is out of scope")
+
+// FindKey Finds a key by ID
+func (s *KeyStore) FindKey(keyID string) (Key, error) {
 	key, err := s.repo.FindKey(keyID)
 	if err != nil {
-		if err == KeyNotFoundError {
-			return Key{}, KeyNotFoundError
+		if err == ErrKeyNotFound {
+			return Key{}, ErrKeyNotFound
 		}
 		return Key{}, err
 	}
 	return key, nil
 }
 
-var KeyNotFoundError = errors.New("requested key was not found")
+// FindScopedKey Find a key by ID within the scope
+func (s *KeyStore) FindScopedKey(keyID string, scope string) (Key, error) {
+	key, err := s.FindKey(keyID)
+	if err != nil {
+		return Key{}, err
+	}
+	if key.Scope != scope {
+		return Key{}, ErrKeyOutOfScope
+	}
+
+	return key, nil
+}

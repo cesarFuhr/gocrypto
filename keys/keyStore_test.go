@@ -15,7 +15,7 @@ type KeyRepositoryStub struct {
 func (r *KeyRepositoryStub) FindKey(keyID string) (Key, error) {
 	key, ok := r.store[keyID]
 	if ok == false {
-		return Key{}, KeyNotFoundError
+		return Key{}, ErrKeyNotFound
 	}
 	return key, nil
 }
@@ -65,7 +65,33 @@ func TestCreateKey(t *testing.T) {
 	})
 }
 
-func TestFindScopedKeys(t *testing.T) {
+func TestFindKey(t *testing.T) {
+	keyStore := KeyStore{
+		source: KeySourceStub{},
+		repo:   &KeyRepositoryStub{map[string]Key{}},
+	}
+	t.Run("Should return a keypair", func(t *testing.T) {
+		got, _ := keyStore.FindKey("id")
+		want := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
+
+		assertType(t, got, want)
+	})
+	t.Run("Should return the correct keypair", func(t *testing.T) {
+		key := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
+		found, _ := keyStore.FindKey(key.ID)
+
+		assertString(t, found.ID, key.ID)
+	})
+	t.Run("Should return an error if key was not found", func(t *testing.T) {
+		_, err := keyStore.FindKey("inexistent key.ID")
+
+		if err != ErrKeyNotFound {
+			t.Fatalf("was expecting a ErrKeyNotFound and didn't received")
+		}
+	})
+}
+
+func TestFindScopedKey(t *testing.T) {
 	keyStore := KeyStore{
 		source: KeySourceStub{},
 		repo:   &KeyRepositoryStub{map[string]Key{}},
@@ -76,16 +102,18 @@ func TestFindScopedKeys(t *testing.T) {
 
 		assertType(t, got, want)
 	})
-	t.Run("Should return the correct keypair", func(t *testing.T) {
-		key := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
-		found, _ := keyStore.FindScopedKey(key.ID, "scope")
+	t.Run("Should return an error if Key is out of scope", func(t *testing.T) {
+		key := keyStore.CreateKey("scope1", time.Now().AddDate(0, 0, 1))
+		_, err := keyStore.FindScopedKey(key.ID, "scope2")
 
-		assertString(t, found.ID, key.ID)
+		if err != ErrKeyOutOfScope {
+			t.Fatalf("was expecting a ErrKeyOutOfScope and received %v", err)
+		}
 	})
 	t.Run("Should return an error if key was not found", func(t *testing.T) {
 		_, err := keyStore.FindScopedKey("inexistent key.ID", "scope")
 
-		if err != KeyNotFoundError {
+		if err != ErrKeyNotFound {
 			t.Fatalf("was expecting a KeyNotFoundError and didn't received")
 		}
 	})
