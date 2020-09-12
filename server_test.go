@@ -29,11 +29,13 @@ func (s *KeyStoreStub) CreateKey(scope string, exp time.Time) keys.Key {
 	}
 }
 
+var validReqBody, _ = json.Marshal(keyOpts{"scope", time.Now().UTC().Format(time.RFC3339)})
+
 func TestPOSTKeys(t *testing.T) {
 	keyStoreStub := KeyStoreStub{}
 	server := KeyServer{&keyStoreStub}
 	t.Run("Should return 200 on /keys", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodPost, "/keys", nil)
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(validReqBody))
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -41,7 +43,7 @@ func TestPOSTKeys(t *testing.T) {
 		assertStatus(t, response.Code, http.StatusCreated)
 	})
 	t.Run("Should return valid json on /keys", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodPost, "/keys", nil)
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(validReqBody))
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -52,8 +54,8 @@ func TestPOSTKeys(t *testing.T) {
 			t.Errorf("got an invalid JSON %q", respBytes)
 		}
 	})
-	t.Run("Should have the all properties on /keys response", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodPost, "/keys", nil)
+	t.Run("Should return all properties on /keys response", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(validReqBody))
 		response := httptest.NewRecorder()
 
 		wants := []string{"publicKey", "keyID", "expiration"}
@@ -69,8 +71,8 @@ func TestPOSTKeys(t *testing.T) {
 		}
 	})
 	t.Run("Should call the CreateKey with expiration and scope", func(t *testing.T) {
-		scope := "test"
-		expiration := time.Now().AddDate(0, 0, 1).UTC().Format(time.RFC3339)
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
 		requestBody, _ := json.Marshal(map[string]string{
 			"scope": scope,
 			"expiration": expiration,
@@ -79,11 +81,44 @@ func TestPOSTKeys(t *testing.T) {
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
-		respMap := map[string]interface{}{}
-		extractJson(response.Body, respMap)
 
-		assertPresence(t, keyStoreStub.CalledWith, expiration)
-		assertPresence(t, keyStoreStub.CalledWith, scope)
+		wantedExpiration, _ := time.Parse(time.RFC3339, expiration)
+		assertInsideSlice(t, keyStoreStub.CalledWith, wantedExpiration)
+		assertInsideSlice(t, keyStoreStub.CalledWith, scope)
+	})
+	t.Run("Should only return in the /keys endpoint", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodPost, "/otherEndpoint", nil)
+		response := httptest.NewRecorder()
+
+		want := http.StatusNotFound
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, want)
+	})
+	t.Run("Should reutrn a BadRequest if body is nil", func(t *testing.T){
+		request, _ := http.NewRequest(http.MethodPost, "/keys", nil)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusBadRequest)
+		assertInsideJson(t, response.Body, "message", "Invalid: Empty body")
+	})
+	t.Run("Should reutrn a BadRequest if expiration is not a RFC3339", func(t *testing.T){
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RubyDate)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope": scope,
+			"expiration": expiration,
+		})
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusBadRequest)
+		assertInsideJson(t, response.Body, "message", "Invalid: expiration property format")
 	})
 }
 
@@ -100,10 +135,12 @@ func extractJson(jBuff *bytes.Buffer, m map[string]interface{}) error {
 	return nil
 }
 
-func assertParams(t *testing.T, got, want []interface{}) {
+func assertInsideJson(t *testing.T, jBuff *bytes.Buffer, wantedKey string, wantedValue interface{}) {
 	t.Helper()
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %v, want %v", got, want)
+	got := map[string]interface{}{}
+	extractJson(jBuff, got)
+	if !reflect.DeepEqual(got[wantedKey], wantedValue) {
+		t.Errorf("got %v, want %v", got[wantedKey], wantedValue)
 	}
 }
 
@@ -116,6 +153,6 @@ func assertInsideSlice(t *testing.T, a []interface{}, want interface{}) {
 		}
 	}
 	if !has {
-		t.Errorf("Did not found: %v", want)
+		t.Errorf("Did not found: %v, in %v", want, a)
 	}
 }

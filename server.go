@@ -1,20 +1,18 @@
 package main
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/cesarFuhr/gocrypto/keys"
+	"github.com/cesarFuhr/gocrypto/presenters"
 )
 
-type createKeyResponseBody struct {
-	KeyID      string    `json:"keyID"`
-	Expiration time.Time `json:"expiration"`
-	PublicKey  string    `json:"publicKey"`
+type keyOpts struct {
+	Scope      string `json:"scope"`
+	Expiration string `json:"expiration"`
 }
 
 type keyStoreInterface interface {
@@ -28,17 +26,39 @@ type KeyServer struct {
 
 // ServeHTTP serves http requests
 func (s *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	key := s.keyStore.CreateKey("test", time.Now())
+
+	router := http.NewServeMux()
+	router.Handle("/keys", http.HandlerFunc(s.keysHandler))
+
+	router.ServeHTTP(w, r)
+}
+
+func (s *KeyServer) keysHandler(w http.ResponseWriter, r *http.Request) {
+	var o keyOpts
+	err := decodeJSONBody(r, &o)
+	if err != nil {
+		var mr *malformedRequest
+		if errors.As(err, &mr) {
+			w.WriteHeader(mr.status)
+			json.NewEncoder(w).Encode(presenters.HttpError{
+				Message: mr.msg,
+			})
+		}
+		return
+	}
+
+	exp, err := time.Parse(time.RFC3339, o.Expiration)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(presenters.HttpError{
+			Message: "Invalid: expiration property format",
+		})
+		return
+	}
+
+	key := s.keyStore.CreateKey(o.Scope, exp)
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createKeyResponseBody{
-		KeyID:      key.ID,
-		Expiration: key.Expiration.UTC(),
-		PublicKey:  formatPublicKey(key.Pub),
-	})
+	json.NewEncoder(w).Encode(presenters.NewHttpCreateKey(key))
 }
 
-func formatPublicKey(pubKey *rsa.PublicKey) string {
-	b := pem.EncodeToMemory(&pem.Block{Type: "RSA PUBLIC KEY", Bytes: x509.MarshalPKCS1PublicKey(pubKey)})
-	return string(b)
-}
