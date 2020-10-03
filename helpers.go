@@ -32,7 +32,7 @@ func decodeJSONBody(r *http.Request, dst interface{}) error {
 
 		switch {
 		case errors.Is(err, io.EOF):
-			msg := fmt.Sprintf("Invalid: Empty body")
+			msg := "Invalid: Empty body"
 			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 		case errors.As(err, &syntaxError):
 			msg := fmt.Sprintf("Request body contains invalid JSON (at position %d)", syntaxError.Offset)

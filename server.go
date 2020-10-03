@@ -35,6 +35,16 @@ func (s *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *KeyServer) keysHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.getKeys(w, r)
+	case http.MethodPost:
+		s.createKeys(w, r)
+	}
+	return
+}
+
+func (s *KeyServer) createKeys(w http.ResponseWriter, r *http.Request) {
 	var o keyOpts
 	err := decodeJSONBody(r, &o)
 	if err != nil {
@@ -44,6 +54,7 @@ func (s *KeyServer) keysHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(presenters.HttpError{
 				Message: mr.msg,
 			})
+			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(presenters.HttpError{
@@ -65,4 +76,10 @@ func (s *KeyServer) keysHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(presenters.NewHttpCreateKey(key))
+	return
+}
+
+func (s *KeyServer) getKeys(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	return
 }
