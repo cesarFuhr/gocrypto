@@ -4,23 +4,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 )
 
 type malformedRequest struct {
-    status int
-	msg string
+	status int
+	msg    string
 }
 
 func (mr *malformedRequest) Error() string {
-    return mr.msg
+	return mr.msg
 }
 
 func decodeJSONBody(r *http.Request, dst interface{}) error {
 	if r.Body == nil {
 		return &malformedRequest{
 			status: http.StatusBadRequest,
-			msg: "Invalid: Empty body",
+			msg:    "Invalid: Empty body",
 		}
 	}
 
@@ -30,16 +31,18 @@ func decodeJSONBody(r *http.Request, dst interface{}) error {
 		var unmarshalTypeError *json.UnmarshalTypeError
 
 		switch {
+		case errors.Is(err, io.EOF):
+			msg := fmt.Sprintf("Invalid: Empty body")
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 		case errors.As(err, &syntaxError):
 			msg := fmt.Sprintf("Request body contains invalid JSON (at position %d)", syntaxError.Offset)
-			return &malformedRequest{ status: http.StatusBadRequest, msg: msg }
-
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 		case errors.As(err, &unmarshalTypeError):
 			msg := fmt.Sprintf(
 				"Request body contains invalid value for the %q field (at position %d)",
 				unmarshalTypeError.Field,
 				unmarshalTypeError.Offset)
-			return &malformedRequest{ status: http.StatusBadRequest, msg: msg }
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
 		}
 		return err
 	}

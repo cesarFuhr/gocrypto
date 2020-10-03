@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -45,9 +44,6 @@ func (s *KeyServer) keysHandler(w http.ResponseWriter, r *http.Request) {
 				Message: mr.msg,
 			})
 		}
-		json.NewEncoder(w).Encode(presenters.HttpError{
-			Message: fmt.Sprint(err),
-		})
 		return
 	}
 

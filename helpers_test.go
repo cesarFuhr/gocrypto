@@ -11,11 +11,11 @@ type testStruct struct {
 }
 
 func TestDecodeJSONBody(t *testing.T) {
-	t.Run("Should return err for empty body", func(t *testing.T){
+	t.Run("Should return err for empty body", func(t *testing.T) {
 		r, _ := http.NewRequest(http.MethodPost, "whatever", nil)
 		want := malformedRequest{
 			status: http.StatusBadRequest,
-			msg: "Invalid: Empty body",
+			msg:    "Invalid: Empty body",
 		}
 
 		dst := testStruct{}
@@ -25,7 +25,21 @@ func TestDecodeJSONBody(t *testing.T) {
 			t.Errorf("want %v, got %v", want, got)
 		}
 	})
-	t.Run("Should return an error for a invalid json body", func(t *testing.T){
+	t.Run("Should return err for empty body", func(t *testing.T) {
+		r, _ := http.NewRequest(http.MethodPost, "whatever", strings.NewReader(""))
+		want := malformedRequest{
+			status: http.StatusBadRequest,
+			msg:    "Invalid: Empty body",
+		}
+
+		dst := testStruct{}
+		got := decodeJSONBody(r, dst)
+
+		if got.Error() != want.Error() {
+			t.Errorf("want %v, got %v", want, got)
+		}
+	})
+	t.Run("Should return an error for a invalid json body", func(t *testing.T) {
 		r, _ := http.NewRequest(http.MethodPost, "whatever", strings.NewReader("{\"test\": }"))
 		wantedMsgPrefix := "Request body contains invalid JSON"
 
