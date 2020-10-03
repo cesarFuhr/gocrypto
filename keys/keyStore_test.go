@@ -28,17 +28,16 @@ func (r *KeyRepositoryStub) InsertKey(key Key) error {
 type KeySourceStub struct {
 }
 
-var mockKeys, _ = rsa.GenerateKey(rand.Reader, 2048)
+var mockKeys, mockErr = rsa.GenerateKey(rand.Reader, 2048)
 
-func (p KeySourceStub) Take() (privKey *rsa.PrivateKey) {
-	privKey = mockKeys
-	return
+func (p KeySourceStub) Take() (*rsa.PrivateKey, error) {
+	return mockKeys, mockErr
 }
 
 func TestCreateKey(t *testing.T) {
 	keyStore := KeyStore{
-		source: KeySourceStub{},
-		repo:   &KeyRepositoryStub{map[string]Key{}},
+		Source: KeySourceStub{},
+		Repo:   &KeyRepositoryStub{map[string]Key{}},
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
 		got := keyStore.CreateKey("scope", time.Now())
@@ -67,8 +66,8 @@ func TestCreateKey(t *testing.T) {
 
 func TestFindKey(t *testing.T) {
 	keyStore := KeyStore{
-		source: KeySourceStub{},
-		repo:   &KeyRepositoryStub{map[string]Key{}},
+		Source: KeySourceStub{},
+		Repo:   &KeyRepositoryStub{map[string]Key{}},
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
 		got, _ := keyStore.FindKey("id")
@@ -93,8 +92,8 @@ func TestFindKey(t *testing.T) {
 
 func TestFindScopedKey(t *testing.T) {
 	keyStore := KeyStore{
-		source: KeySourceStub{},
-		repo:   &KeyRepositoryStub{map[string]Key{}},
+		Source: KeySourceStub{},
+		Repo:   &KeyRepositoryStub{map[string]Key{}},
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
 		got, _ := keyStore.FindScopedKey("id", "scope")

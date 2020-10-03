@@ -19,7 +19,7 @@ type Key struct {
 
 // KeySource Key provider of the KeyStore
 type KeySource interface {
-	Take() *rsa.PrivateKey
+	Take() (*rsa.PrivateKey, error)
 }
 
 // KeyRepository Persistency interface to serve the KeyStore
@@ -28,15 +28,15 @@ type KeyRepository interface {
 	InsertKey(Key) error
 }
 
-// KeyStore Stores keys giving scopes and expiration
+// KeyStore Stores keys giving scopes and type
 type KeyStore struct {
-	source KeySource
-	repo   KeyRepository
+	Source KeySource
+	Repo   KeyRepository
 }
 
 // CreateKey Creates a Key, scoping it and setting the expiration
 func (s *KeyStore) CreateKey(scope string, expiration time.Time) Key {
-	newKey := s.source.Take()
+	newKey, _ := s.Source.Take()
 	key := Key{
 		Priv:       newKey,
 		Pub:        &newKey.PublicKey,
@@ -45,7 +45,7 @@ func (s *KeyStore) CreateKey(scope string, expiration time.Time) Key {
 		ID:         uuid.New().String(),
 	}
 
-	s.repo.InsertKey(key)
+	s.Repo.InsertKey(key)
 
 	return key
 }
@@ -58,7 +58,7 @@ var ErrKeyOutOfScope = errors.New("requested key is out of scope")
 
 // FindKey Finds a key by ID
 func (s *KeyStore) FindKey(keyID string) (Key, error) {
-	key, err := s.repo.FindKey(keyID)
+	key, err := s.Repo.FindKey(keyID)
 	if err != nil {
 		if err == ErrKeyNotFound {
 			return Key{}, ErrKeyNotFound
