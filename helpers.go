@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/cesarFuhr/gocrypto/presenters"
 )
 
 type malformedRequest struct {
@@ -48,4 +50,12 @@ func decodeJSONBody(r *http.Request, dst interface{}) error {
 	}
 
 	return nil
+}
+
+func methodNotAllowed(w http.ResponseWriter, msg string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	json.NewEncoder(w).Encode(presenters.HttpError{
+		Message: msg,
+	})
+	return
 }

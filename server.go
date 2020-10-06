@@ -31,8 +31,14 @@ func (s *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	router := http.NewServeMux()
 	router.Handle("/keys", http.HandlerFunc(s.keysHandler))
+	router.Handle("/encrypt", http.HandlerFunc(s.encryptHandler))
 
 	router.ServeHTTP(w, r)
+}
+
+func (s *KeyServer) encryptHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	return
 }
 
 func (s *KeyServer) keysHandler(w http.ResponseWriter, r *http.Request) {
@@ -41,6 +47,8 @@ func (s *KeyServer) keysHandler(w http.ResponseWriter, r *http.Request) {
 		s.getKeys(w, r)
 	case http.MethodPost:
 		s.createKeys(w, r)
+	default:
+		methodNotAllowed(w, "Method not allowed")
 	}
 	return
 }

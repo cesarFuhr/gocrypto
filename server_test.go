@@ -228,6 +228,17 @@ func TestGETKeys(t *testing.T) {
 			assertInsideJson(t, response.Body, "message", "There was an unexpected error")
 		})
 	})
+	t.Run("If uses a unsuported method", func(t *testing.T) {
+		t.Run("Should return a method not allowed", func(t *testing.T) {
+			want := http.StatusMethodNotAllowed
+			getRequest, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("/keys"), nil)
+			response := httptest.NewRecorder()
+			server.ServeHTTP(response, getRequest)
+
+			assertStatus(t, response.Code, want)
+			assertInsideJson(t, response.Body, "message", "Method not allowed")
+		})
+	})
 }
 
 func TestEncrypt(t *testing.T) {
@@ -249,13 +260,6 @@ func assertStatus(t *testing.T, got, want int) {
 	t.Helper()
 	if got != want {
 		t.Errorf("got %d, want %d", got, want)
-	}
-}
-
-func assertValue(t *testing.T, got, want interface{}) {
-	t.Helper()
-	if got != want {
-		t.Errorf("got %v, want %v", got, want)
 	}
 }
 
