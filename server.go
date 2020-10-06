@@ -18,6 +18,7 @@ type keyOpts struct {
 
 type keyStoreInterface interface {
 	CreateKey(string, time.Time) keys.Key
+	FindKey(string) (keys.Key, error)
 }
 
 // KeyServer key HTTP API server
@@ -80,6 +81,25 @@ func (s *KeyServer) createKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *KeyServer) getKeys(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("keyID")
+
+	key, err := s.keyStore.FindKey(id)
+	if err != nil {
+		if err == keys.ErrKeyNotFound {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(presenters.HttpError{
+				Message: "Key was not found",
+			})
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(presenters.HttpError{
+			Message: "There was an unexpected error",
+		})
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(presenters.NewHttpCreateKey(key))
 	return
 }

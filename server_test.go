@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/cesarFuhr/gocrypto/keys"
+	"github.com/google/uuid"
 )
 
 type KeyStoreStub struct {
@@ -23,10 +26,27 @@ func (s *KeyStoreStub) CreateKey(scope string, exp time.Time) keys.Key {
 	return keys.Key{
 		Scope:      scope,
 		Expiration: time.Now().AddDate(0, 0, 1),
-		ID:         "a key ID",
+		ID:         uuid.New().String(),
 		Pub:        &rsa.PublicKey{},
 		Priv:       &rsa.PrivateKey{},
 	}
+}
+
+func (s *KeyStoreStub) FindKey(id string) (keys.Key, error) {
+	s.CalledWith = []interface{}{id}
+	if id == "notFound" {
+		return keys.Key{}, keys.ErrKeyNotFound
+	}
+	if id == "otherError" {
+		return keys.Key{}, errors.New("Any error at all")
+	}
+	return keys.Key{
+		Scope:      "scope",
+		Expiration: time.Now().AddDate(0, 0, 1),
+		ID:         id,
+		Pub:        &rsa.PublicKey{},
+		Priv:       &rsa.PrivateKey{},
+	}, nil
 }
 
 var validReqBody, _ = json.Marshal(keyOpts{"scope", time.Now().UTC().Format(time.RFC3339)})
@@ -151,12 +171,76 @@ func TestGETKeys(t *testing.T) {
 			}
 		}
 	})
+	t.Run("Should call find Keys with the right params", func(t *testing.T) {
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope":      scope,
+			"expiration": expiration,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		respMap := map[string]interface{}{}
+		extractJson(response.Body, respMap)
+
+		getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=%v", respMap["keyID"]), nil)
+		server.ServeHTTP(response, getRequest)
+
+		assertInsideSlice(t, keyStoreStub.CalledWith, respMap["keyID"])
+	})
+	t.Run("If key was not found", func(t *testing.T) {
+		t.Run("Should return a 404", func(t *testing.T) {
+			want := http.StatusNotFound
+			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=notFound"), nil)
+			response := httptest.NewRecorder()
+			server.ServeHTTP(response, getRequest)
+
+			assertStatus(t, response.Code, want)
+		})
+		t.Run("Should a not found message", func(t *testing.T) {
+			want := http.StatusNotFound
+			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=notFound"), nil)
+			response := httptest.NewRecorder()
+			server.ServeHTTP(response, getRequest)
+
+			assertStatus(t, response.Code, want)
+			assertInsideJson(t, response.Body, "message", "Key was not found")
+		})
+	})
+	t.Run("If there was any other error", func(t *testing.T) {
+		t.Run("Should return a 500", func(t *testing.T) {
+			want := http.StatusInternalServerError
+			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=otherError"), nil)
+			response := httptest.NewRecorder()
+			server.ServeHTTP(response, getRequest)
+
+			assertStatus(t, response.Code, want)
+		})
+		t.Run("Should return a internal server error message", func(t *testing.T) {
+			want := http.StatusInternalServerError
+			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=otherError"), nil)
+			response := httptest.NewRecorder()
+			server.ServeHTTP(response, getRequest)
+
+			assertStatus(t, response.Code, want)
+			assertInsideJson(t, response.Body, "message", "There was an unexpected error")
+		})
+	})
 }
 
 func assertStatus(t *testing.T, got, want int) {
 	t.Helper()
 	if got != want {
 		t.Errorf("got %d, want %d", got, want)
+	}
+}
+
+func assertValue(t *testing.T, got, want interface{}) {
+	t.Helper()
+	if got != want {
+		t.Errorf("got %v, want %v", got, want)
 	}
 }
 
@@ -179,11 +263,11 @@ func assertInsideSlice(t *testing.T, a []interface{}, want interface{}) {
 	t.Helper()
 	has := false
 	for _, v := range a {
-		if reflect.DeepEqual(v, want) {
+		if v == want {
 			has = true
 		}
 	}
 	if !has {
-		t.Errorf("Did not found: %v, in %v", want, a)
+		t.Errorf("Did not found: %v, of type %T in %v", want, want, a)
 	}
 }
