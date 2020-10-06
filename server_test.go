@@ -245,7 +245,7 @@ func TestEncrypt(t *testing.T) {
 	keyStoreStub := KeyStoreStub{}
 	server := KeyServer{&keyStoreStub}
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/encrypt", nil)
+		request, _ := http.NewRequest(http.MethodPost, "/encrypt", nil)
 		response := httptest.NewRecorder()
 
 		want := http.StatusOK
@@ -253,6 +253,27 @@ func TestEncrypt(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, want)
+	})
+	t.Run("Should return the correct properties", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodPost, "/encrypt", nil)
+		response := httptest.NewRecorder()
+
+		want := ""
+
+		server.ServeHTTP(response, request)
+
+		assertInsideJson(t, response.Body, "encryptedData", want)
+	})
+	t.Run("If uses a unsuported method", func(t *testing.T) {
+		t.Run("Should return a method not allowed", func(t *testing.T) {
+			want := http.StatusMethodNotAllowed
+			getRequest, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("/encrypt"), nil)
+			response := httptest.NewRecorder()
+			server.ServeHTTP(response, getRequest)
+
+			assertStatus(t, response.Code, want)
+			assertInsideJson(t, response.Body, "message", "Method not allowed")
+		})
 	})
 }
 

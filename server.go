@@ -37,6 +37,10 @@ func (s *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *KeyServer) encryptHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	return
 }
@@ -48,7 +52,7 @@ func (s *KeyServer) keysHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		s.createKeys(w, r)
 	default:
-		methodNotAllowed(w, "Method not allowed")
+		methodNotAllowed(w)
 	}
 	return
 }

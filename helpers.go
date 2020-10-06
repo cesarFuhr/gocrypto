@@ -52,10 +52,10 @@ func decodeJSONBody(r *http.Request, dst interface{}) error {
 	return nil
 }
 
-func methodNotAllowed(w http.ResponseWriter, msg string) {
+func methodNotAllowed(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 	json.NewEncoder(w).Encode(presenters.HttpError{
-		Message: msg,
+		Message: "Method not allowed",
 	})
 	return
 }
