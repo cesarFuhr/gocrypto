@@ -31,8 +31,13 @@ func NewHttpCreateKey(k keys.Key) HttpCreateKey {
 
 func formatPublicKey(pubKey *rsa.PublicKey) string {
 	b := pem.EncodeToMemory(&pem.Block{
-		Type: "RSA PUBLIC KEY",
+		Type:  "RSA PUBLIC KEY",
 		Bytes: x509.MarshalPKCS1PublicKey(pubKey),
 	})
 	return string(b)
+}
+
+// HttpEncrypt representation of the create key response body
+type HttpEncrypt struct {
+	EncryptedData string `json:"encryptedData"`
 }

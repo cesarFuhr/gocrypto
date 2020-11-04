@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,14 +17,24 @@ type keyOpts struct {
 	Expiration string `json:"expiration"`
 }
 
+type encrypt struct {
+	KeyID string `json:"keyID"`
+	Data  string `json:"data"`
+}
+
 type keyStoreInterface interface {
 	CreateKey(string, time.Time) keys.Key
 	FindKey(string) (keys.Key, error)
 }
 
+type cryptoInterface interface {
+	Encrypt(keys.Key, string) ([]byte, error)
+}
+
 // KeyServer key HTTP API server
 type KeyServer struct {
 	keyStore keyStoreInterface
+	crypto   cryptoInterface
 }
 
 // ServeHTTP serves http requests
@@ -41,7 +52,35 @@ func (s *KeyServer) encryptHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
+
+	var o encrypt
+	decodeJSONBody(r, &o)
+
+	key, err := s.keyStore.FindKey(o.KeyID)
+	if err != nil {
+		if err == keys.ErrKeyNotFound {
+			w.WriteHeader(http.StatusPreconditionFailed)
+			json.NewEncoder(w).Encode(presenters.HttpError{
+				Message: "Key was not found",
+			})
+			return
+		}
+		internalServerError(w)
+		return
+	}
+
+	encrypted, err := s.crypto.Encrypt(key, o.Data)
+	if err != nil {
+		internalServerError(w)
+		return
+	}
+
+	b64Encrypted := base64.StdEncoding.EncodeToString(encrypted)
+
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(presenters.HttpEncrypt{
+		EncryptedData: b64Encrypted,
+	})
 	return
 }
 
@@ -104,10 +143,7 @@ func (s *KeyServer) getKeys(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(presenters.HttpError{
-			Message: "There was an unexpected error",
-		})
+		internalServerError(w)
 		return
 	}
 

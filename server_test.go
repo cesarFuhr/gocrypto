@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/rsa"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,7 +19,8 @@ import (
 )
 
 type KeyStoreStub struct {
-	CalledWith []interface{}
+	CalledWith       []interface{}
+	LastDeliveredKey keys.Key
 }
 
 func (s *KeyStoreStub) CreateKey(scope string, exp time.Time) keys.Key {
@@ -40,20 +42,35 @@ func (s *KeyStoreStub) FindKey(id string) (keys.Key, error) {
 	if id == "otherError" {
 		return keys.Key{}, errors.New("Any error at all")
 	}
-	return keys.Key{
+
+	s.LastDeliveredKey = keys.Key{
 		Scope:      "scope",
 		Expiration: time.Now().AddDate(0, 0, 1),
 		ID:         id,
 		Pub:        &rsa.PublicKey{},
 		Priv:       &rsa.PrivateKey{},
-	}, nil
+	}
+	return s.LastDeliveredKey, nil
+}
+
+type CryptoStub struct {
+	CalledWith []interface{}
+}
+
+func (c *CryptoStub) Encrypt(k keys.Key, m string) ([]byte, error) {
+	c.CalledWith = []interface{}{k, m}
+	if m == "ERROR" {
+		return []byte{}, errors.New("Any error at all")
+	}
+	return []byte("abc"), nil
 }
 
 var validReqBody, _ = json.Marshal(keyOpts{"scope", time.Now().UTC().Format(time.RFC3339)})
 
 func TestPOSTKeys(t *testing.T) {
 	keyStoreStub := KeyStoreStub{}
-	server := KeyServer{&keyStoreStub}
+	cryptoStub := CryptoStub{}
+	server := KeyServer{&keyStoreStub, &cryptoStub}
 	t.Run("Should return 201 on /keys", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(validReqBody))
 		response := httptest.NewRecorder()
@@ -144,7 +161,8 @@ func TestPOSTKeys(t *testing.T) {
 
 func TestGETKeys(t *testing.T) {
 	keyStoreStub := KeyStoreStub{}
-	server := KeyServer{&keyStoreStub}
+	cryptoStub := CryptoStub{}
+	server := KeyServer{&keyStoreStub, &cryptoStub}
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodGet, "/keys", nil)
 		response := httptest.NewRecorder()
@@ -243,7 +261,8 @@ func TestGETKeys(t *testing.T) {
 
 func TestEncrypt(t *testing.T) {
 	keyStoreStub := KeyStoreStub{}
-	server := KeyServer{&keyStoreStub}
+	cryptoStub := CryptoStub{}
+	server := KeyServer{&keyStoreStub, &cryptoStub}
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/encrypt", nil)
 		response := httptest.NewRecorder()
@@ -258,11 +277,122 @@ func TestEncrypt(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/encrypt", nil)
 		response := httptest.NewRecorder()
 
-		want := ""
-
 		server.ServeHTTP(response, request)
 
-		assertInsideJson(t, response.Body, "encryptedData", want)
+		assertInsideJson(t, response.Body, "encryptedData", base64.StdEncoding.EncodeToString([]byte("abc")))
+	})
+	t.Run("Should call findKeys with the right params", func(t *testing.T) {
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope":      scope,
+			"expiration": expiration,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		respMap := map[string]interface{}{}
+		extractJson(response.Body, respMap)
+
+		keyID := fmt.Sprintf("%v", respMap["keyID"])
+		requestBody, _ = json.Marshal(map[string]string{
+			"keyID": keyID,
+		})
+		request, _ = http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, keyStoreStub.CalledWith, keyID)
+	})
+	t.Run("Should call Encrypt with the right params", func(t *testing.T) {
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope":      scope,
+			"expiration": expiration,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		respMap := map[string]interface{}{}
+		extractJson(response.Body, respMap)
+
+		keyID := fmt.Sprintf("%v", respMap["keyID"])
+		data := "testing"
+		requestBody, _ = json.Marshal(map[string]string{
+			"keyID": keyID,
+			"data":  data,
+		})
+		request, _ = http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, cryptoStub.CalledWith, data)
+		assertInsideSlice(t, cryptoStub.CalledWith, keyStoreStub.LastDeliveredKey)
+	})
+	t.Run("Should return a internal server error if there was a problem encrypting", func(t *testing.T) {
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope":      scope,
+			"expiration": expiration,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		respMap := map[string]interface{}{}
+		extractJson(response.Body, respMap)
+
+		keyID := fmt.Sprintf("%v", respMap["keyID"])
+		data := "ERROR"
+		requestBody, _ = json.Marshal(map[string]string{
+			"keyID": keyID,
+			"data":  data,
+		})
+		request, _ = http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
+		response = httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusInternalServerError)
+		assertInsideJson(t, response.Body, "message", "There was an unexpected error")
+	})
+	t.Run("Should return a valid base64 string", func(t *testing.T) {
+		keyID := "id"
+		requestBody, _ := json.Marshal(map[string]string{
+			"keyID": keyID,
+		})
+		request, _ := http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		respMap := map[string]interface{}{}
+		extractJson(response.Body, respMap)
+
+		if _, ok := base64.StdEncoding.DecodeString(fmt.Sprintf("%v", respMap["encryptedData"])); ok != nil {
+			t.Errorf("response was not a valid base64")
+		}
+	})
+	t.Run("Should return a precondition fail if the key does not exists", func(t *testing.T) {
+		requestBody, _ := json.Marshal(map[string]string{
+			"keyID": "notFound",
+		})
+		request, _ := http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusPreconditionFailed)
+		assertInsideJson(t, response.Body, "message", "Key was not found")
+	})
+	t.Run("Should return a internal server error if there is a error while finding key", func(t *testing.T) {
+		requestBody, _ := json.Marshal(map[string]string{
+			"keyID": "otherError",
+		})
+		request, _ := http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusInternalServerError)
+		assertInsideJson(t, response.Body, "message", "There was an unexpected error")
 	})
 	t.Run("If uses a unsuported method", func(t *testing.T) {
 		t.Run("Should return a method not allowed", func(t *testing.T) {

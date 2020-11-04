@@ -57,5 +57,11 @@ func methodNotAllowed(w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(presenters.HttpError{
 		Message: "Method not allowed",
 	})
-	return
+}
+
+func internalServerError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusInternalServerError)
+	json.NewEncoder(w).Encode(presenters.HttpError{
+		Message: "There was an unexpected error",
+	})
 }
