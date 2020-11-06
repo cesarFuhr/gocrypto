@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,11 +74,9 @@ func (s *KeyServer) encryptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b64Encrypted := base64.StdEncoding.EncodeToString(encrypted)
-
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(presenters.HttpEncrypt{
-		EncryptedData: b64Encrypted,
+		EncryptedData: string(encrypted),
 	})
 	return
 }

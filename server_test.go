@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +15,10 @@ import (
 	"time"
 
 	"github.com/cesarFuhr/gocrypto/keys"
+	"github.com/cesarFuhr/gocrypto/presenters"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwe"
 )
 
 type KeyStoreStub struct {
@@ -23,14 +26,16 @@ type KeyStoreStub struct {
 	LastDeliveredKey keys.Key
 }
 
+var rsaKey, _ = rsa.GenerateKey(rand.Reader, 4098)
+
 func (s *KeyStoreStub) CreateKey(scope string, exp time.Time) keys.Key {
 	s.CalledWith = []interface{}{scope, exp}
 	return keys.Key{
 		Scope:      scope,
 		Expiration: time.Now().AddDate(0, 0, 1),
 		ID:         uuid.New().String(),
-		Pub:        &rsa.PublicKey{},
-		Priv:       &rsa.PrivateKey{},
+		Pub:        &rsaKey.PublicKey,
+		Priv:       rsaKey,
 	}
 }
 
@@ -47,8 +52,8 @@ func (s *KeyStoreStub) FindKey(id string) (keys.Key, error) {
 		Scope:      "scope",
 		Expiration: time.Now().AddDate(0, 0, 1),
 		ID:         id,
-		Pub:        &rsa.PublicKey{},
-		Priv:       &rsa.PrivateKey{},
+		Pub:        &rsaKey.PublicKey,
+		Priv:       rsaKey,
 	}
 	return s.LastDeliveredKey, nil
 }
@@ -62,7 +67,11 @@ func (c *CryptoStub) Encrypt(k keys.Key, m string) ([]byte, error) {
 	if m == "ERROR" {
 		return []byte{}, errors.New("Any error at all")
 	}
-	return []byte("abc"), nil
+	msg, err := jwe.Encrypt([]byte(m), jwa.RSA_OAEP_256, k.Pub, jwa.A128CBC_HS256, jwa.NoCompress)
+	if err != nil {
+		fmt.Println("Error decrypting", err)
+	}
+	return msg, nil
 }
 
 var validReqBody, _ = json.Marshal(keyOpts{"scope", time.Now().UTC().Format(time.RFC3339)})
@@ -279,7 +288,12 @@ func TestEncrypt(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 
-		assertInsideJson(t, response.Body, "encryptedData", base64.StdEncoding.EncodeToString([]byte("abc")))
+		var got presenters.HttpEncrypt
+		json.NewDecoder(response.Body).Decode(&got)
+
+		if got.EncryptedData == "" {
+			t.Errorf("Expecting data prop, got %v", got.EncryptedData)
+		}
 	})
 	t.Run("Should call findKeys with the right params", func(t *testing.T) {
 		scope := "testing"
@@ -357,19 +371,22 @@ func TestEncrypt(t *testing.T) {
 		assertStatus(t, response.Code, http.StatusInternalServerError)
 		assertInsideJson(t, response.Body, "message", "There was an unexpected error")
 	})
-	t.Run("Should return a valid base64 string", func(t *testing.T) {
+	t.Run("Should return a valid jwe string", func(t *testing.T) {
 		keyID := "id"
 		requestBody, _ := json.Marshal(map[string]string{
 			"keyID": keyID,
+			"data":  "1234",
 		})
 		request, _ := http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, request)
-		respMap := map[string]interface{}{}
-		extractJson(response.Body, respMap)
+		var e presenters.HttpEncrypt
+		json.NewDecoder(response.Body).Decode(&e)
 
-		if _, ok := base64.StdEncoding.DecodeString(fmt.Sprintf("%v", respMap["encryptedData"])); ok != nil {
-			t.Errorf("response was not a valid base64")
+		got := e.EncryptedData
+
+		if _, err := jwe.Decrypt([]byte(got), jwa.RSA_OAEP_256, rsaKey); err != nil {
+			t.Errorf("response was not a valid jwe, %v", err)
 		}
 	})
 	t.Run("Should return a precondition fail if the key does not exists", func(t *testing.T) {
