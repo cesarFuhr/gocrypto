@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,7 +28,7 @@ type keyStoreInterface interface {
 }
 
 type cryptoInterface interface {
-	Encrypt(keys.Key, string) ([]byte, error)
+	Encrypt(*rsa.PublicKey, string) ([]byte, error)
 }
 
 // KeyServer key HTTP API server
@@ -68,7 +69,7 @@ func (s *KeyServer) encryptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encrypted, err := s.crypto.Encrypt(key, o.Data)
+	encrypted, err := s.crypto.Encrypt(key.Pub, o.Data)
 	if err != nil {
 		internalServerError(w)
 		return

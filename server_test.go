@@ -62,12 +62,12 @@ type CryptoStub struct {
 	CalledWith []interface{}
 }
 
-func (c *CryptoStub) Encrypt(k keys.Key, m string) ([]byte, error) {
+func (c *CryptoStub) Encrypt(k *rsa.PublicKey, m string) ([]byte, error) {
 	c.CalledWith = []interface{}{k, m}
 	if m == "ERROR" {
 		return []byte{}, errors.New("Any error at all")
 	}
-	msg, err := jwe.Encrypt([]byte(m), jwa.RSA_OAEP_256, k.Pub, jwa.A128CBC_HS256, jwa.NoCompress)
+	msg, err := jwe.Encrypt([]byte(m), jwa.RSA_OAEP_256, k, jwa.A128CBC_HS256, jwa.NoCompress)
 	if err != nil {
 		fmt.Println("Error decrypting", err)
 	}
@@ -108,7 +108,7 @@ func TestPOSTKeys(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 		respMap := map[string]interface{}{}
-		extractJson(response.Body, respMap)
+		extractJSON(response.Body, respMap)
 
 		for _, want := range wants {
 			if _, ok := respMap[want]; ok != true {
@@ -149,7 +149,7 @@ func TestPOSTKeys(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusBadRequest)
-		assertInsideJson(t, response.Body, "message", "Invalid: Empty body")
+		assertInsideJSON(t, response.Body, "message", "Invalid: Empty body")
 	})
 	t.Run("Should return a BadRequest if expiration is not a RFC3339", func(t *testing.T) {
 		scope := "testing"
@@ -164,7 +164,7 @@ func TestPOSTKeys(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusBadRequest)
-		assertInsideJson(t, response.Body, "message", "Invalid: expiration property format")
+		assertInsideJSON(t, response.Body, "message", "Invalid: expiration property format")
 	})
 }
 
@@ -190,7 +190,7 @@ func TestGETKeys(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 		respMap := map[string]interface{}{}
-		extractJson(response.Body, respMap)
+		extractJSON(response.Body, respMap)
 
 		for _, want := range wants {
 			if _, ok := respMap[want]; ok != true {
@@ -210,7 +210,7 @@ func TestGETKeys(t *testing.T) {
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, request)
 		respMap := map[string]interface{}{}
-		extractJson(response.Body, respMap)
+		extractJSON(response.Body, respMap)
 
 		getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=%v", respMap["keyID"]), nil)
 		server.ServeHTTP(response, getRequest)
@@ -233,7 +233,7 @@ func TestGETKeys(t *testing.T) {
 			server.ServeHTTP(response, getRequest)
 
 			assertStatus(t, response.Code, want)
-			assertInsideJson(t, response.Body, "message", "Key was not found")
+			assertInsideJSON(t, response.Body, "message", "Key was not found")
 		})
 	})
 	t.Run("If there was any other error", func(t *testing.T) {
@@ -252,7 +252,7 @@ func TestGETKeys(t *testing.T) {
 			server.ServeHTTP(response, getRequest)
 
 			assertStatus(t, response.Code, want)
-			assertInsideJson(t, response.Body, "message", "There was an unexpected error")
+			assertInsideJSON(t, response.Body, "message", "There was an unexpected error")
 		})
 	})
 	t.Run("If uses a unsuported method", func(t *testing.T) {
@@ -263,7 +263,7 @@ func TestGETKeys(t *testing.T) {
 			server.ServeHTTP(response, getRequest)
 
 			assertStatus(t, response.Code, want)
-			assertInsideJson(t, response.Body, "message", "Method not allowed")
+			assertInsideJSON(t, response.Body, "message", "Method not allowed")
 		})
 	})
 }
@@ -307,7 +307,7 @@ func TestEncrypt(t *testing.T) {
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, request)
 		respMap := map[string]interface{}{}
-		extractJson(response.Body, respMap)
+		extractJSON(response.Body, respMap)
 
 		keyID := fmt.Sprintf("%v", respMap["keyID"])
 		requestBody, _ = json.Marshal(map[string]string{
@@ -330,7 +330,7 @@ func TestEncrypt(t *testing.T) {
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, request)
 		respMap := map[string]interface{}{}
-		extractJson(response.Body, respMap)
+		extractJSON(response.Body, respMap)
 
 		keyID := fmt.Sprintf("%v", respMap["keyID"])
 		data := "testing"
@@ -342,7 +342,7 @@ func TestEncrypt(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertInsideSlice(t, cryptoStub.CalledWith, data)
-		assertInsideSlice(t, cryptoStub.CalledWith, keyStoreStub.LastDeliveredKey)
+		assertInsideSlice(t, cryptoStub.CalledWith, keyStoreStub.LastDeliveredKey.Pub)
 	})
 	t.Run("Should return a internal server error if there was a problem encrypting", func(t *testing.T) {
 		scope := "testing"
@@ -356,7 +356,7 @@ func TestEncrypt(t *testing.T) {
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, request)
 		respMap := map[string]interface{}{}
-		extractJson(response.Body, respMap)
+		extractJSON(response.Body, respMap)
 
 		keyID := fmt.Sprintf("%v", respMap["keyID"])
 		data := "ERROR"
@@ -369,7 +369,7 @@ func TestEncrypt(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusInternalServerError)
-		assertInsideJson(t, response.Body, "message", "There was an unexpected error")
+		assertInsideJSON(t, response.Body, "message", "There was an unexpected error")
 	})
 	t.Run("Should return a valid jwe string", func(t *testing.T) {
 		keyID := "id"
@@ -398,7 +398,7 @@ func TestEncrypt(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusPreconditionFailed)
-		assertInsideJson(t, response.Body, "message", "Key was not found")
+		assertInsideJSON(t, response.Body, "message", "Key was not found")
 	})
 	t.Run("Should return a internal server error if there is a error while finding key", func(t *testing.T) {
 		requestBody, _ := json.Marshal(map[string]string{
@@ -409,7 +409,7 @@ func TestEncrypt(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusInternalServerError)
-		assertInsideJson(t, response.Body, "message", "There was an unexpected error")
+		assertInsideJSON(t, response.Body, "message", "There was an unexpected error")
 	})
 	t.Run("If uses a unsuported method", func(t *testing.T) {
 		t.Run("Should return a method not allowed", func(t *testing.T) {
@@ -419,7 +419,7 @@ func TestEncrypt(t *testing.T) {
 			server.ServeHTTP(response, getRequest)
 
 			assertStatus(t, response.Code, want)
-			assertInsideJson(t, response.Body, "message", "Method not allowed")
+			assertInsideJSON(t, response.Body, "message", "Method not allowed")
 		})
 	})
 }
@@ -431,16 +431,16 @@ func assertStatus(t *testing.T, got, want int) {
 	}
 }
 
-func extractJson(jBuff *bytes.Buffer, m map[string]interface{}) error {
+func extractJSON(jBuff *bytes.Buffer, m map[string]interface{}) error {
 	respBytes, _ := ioutil.ReadAll(jBuff)
 	_ = json.Unmarshal(respBytes, &m)
 	return nil
 }
 
-func assertInsideJson(t *testing.T, jBuff *bytes.Buffer, wantedKey string, wantedValue interface{}) {
+func assertInsideJSON(t *testing.T, jBuff *bytes.Buffer, wantedKey string, wantedValue interface{}) {
 	t.Helper()
 	got := map[string]interface{}{}
-	extractJson(jBuff, got)
+	extractJSON(jBuff, got)
 	if !reflect.DeepEqual(got[wantedKey], wantedValue) {
 		t.Errorf("got %v, want %v", got[wantedKey], wantedValue)
 	}
