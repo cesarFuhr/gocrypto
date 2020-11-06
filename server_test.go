@@ -424,6 +424,22 @@ func TestEncrypt(t *testing.T) {
 	})
 }
 
+func TestDecrypt(t *testing.T) {
+	keyStoreStub := KeyStoreStub{}
+	cryptoStub := CryptoStub{}
+	server := KeyServer{&keyStoreStub, &cryptoStub}
+	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodPost, "/decrypt", nil)
+		response := httptest.NewRecorder()
+
+		want := http.StatusOK
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, want)
+	})
+}
+
 func assertStatus(t *testing.T, got, want int) {
 	t.Helper()
 	if got != want {
