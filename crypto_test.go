@@ -26,4 +26,15 @@ func TestCryptoEncrypt(t *testing.T) {
 			t.Errorf("Invalid jwe: %v", err)
 		}
 	})
+	t.Run("Should be able to decrypt back", func(t *testing.T) {
+		want := "test"
+		encrypted, _ := crypto.Encrypt(key.Pub, want)
+
+		decrypted, _ := jwe.Decrypt(encrypted, jwa.RSA_OAEP_256, key.Priv)
+		got := string(decrypted)
+
+		if want != got {
+			t.Errorf("want %v, got %v", want, string(got))
+		}
+	})
 }
