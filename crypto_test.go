@@ -38,3 +38,18 @@ func TestCryptoEncrypt(t *testing.T) {
 		}
 	})
 }
+
+func TestCryptoDecrypt(t *testing.T) {
+	crypto := JWECrypto{}
+	t.Run("Should be able to decrypt a encrypted message", func(t *testing.T) {
+		want := "test"
+		encrypted, _ := crypto.Encrypt(key.Pub, want)
+
+		decrypted, _ := crypto.Decrypt(key.Priv, string(encrypted))
+		got := string(decrypted)
+
+		if want != got {
+			t.Errorf("want %v, got %v", want, string(got))
+		}
+	})
+}

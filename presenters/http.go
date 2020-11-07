@@ -9,20 +9,21 @@ import (
 	"github.com/cesarFuhr/gocrypto/keys"
 )
 
-// HttpBadRequest Exception formatter to all http badRequests
-type HttpError struct {
+// HTTPError Exception formatter to all http badRequests
+type HTTPError struct {
 	Message string `json:"message"`
 }
 
-// HttpCreateKey Http representation of the create key response body
-type HttpCreateKey struct {
+// HTTPCreateKey Http representation of the create key response body
+type HTTPCreateKey struct {
 	KeyID      string `json:"keyID"`
 	Expiration string `json:"expiration"`
 	PublicKey  string `json:"publicKey"`
 }
 
-func NewHttpCreateKey(k keys.Key) HttpCreateKey {
-	return HttpCreateKey{
+// NewHTTPCreateKey Builder for the http CreateKey response
+func NewHTTPCreateKey(k keys.Key) HTTPCreateKey {
+	return HTTPCreateKey{
 		KeyID:      k.ID,
 		Expiration: k.Expiration.UTC().Format(time.RFC3339),
 		PublicKey:  formatPublicKey(k.Pub),
@@ -37,7 +38,12 @@ func formatPublicKey(pubKey *rsa.PublicKey) string {
 	return string(b)
 }
 
-// HttpEncrypt representation of the create key response body
-type HttpEncrypt struct {
+// HTTPEncrypt representation of the encrypt response body
+type HTTPEncrypt struct {
 	EncryptedData string `json:"encryptedData"`
+}
+
+// HTTPDecrypt representation of the encrypt response body
+type HTTPDecrypt struct {
+	Data string `json:"data"`
 }

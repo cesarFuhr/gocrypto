@@ -54,14 +54,14 @@ func decodeJSONBody(r *http.Request, dst interface{}) error {
 
 func methodNotAllowed(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
-	json.NewEncoder(w).Encode(presenters.HttpError{
+	json.NewEncoder(w).Encode(presenters.HTTPError{
 		Message: "Method not allowed",
 	})
 }
 
 func internalServerError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
-	json.NewEncoder(w).Encode(presenters.HttpError{
+	json.NewEncoder(w).Encode(presenters.HTTPError{
 		Message: "There was an unexpected error",
 	})
 }

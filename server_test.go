@@ -74,6 +74,18 @@ func (c *CryptoStub) Encrypt(k *rsa.PublicKey, m string) ([]byte, error) {
 	return msg, nil
 }
 
+func (c *CryptoStub) Decrypt(k *rsa.PrivateKey, m string) ([]byte, error) {
+	c.CalledWith = []interface{}{k, m}
+	if m == "ERROR" {
+		return []byte{}, errors.New("Any error at all")
+	}
+	msg, err := jwe.Decrypt([]byte(m), jwa.RSA_OAEP_256, k)
+	if err != nil {
+		fmt.Println("Error decrypting", err)
+	}
+	return msg, nil
+}
+
 var validReqBody, _ = json.Marshal(keyOpts{"scope", time.Now().UTC().Format(time.RFC3339)})
 
 func TestPOSTKeys(t *testing.T) {
@@ -288,7 +300,7 @@ func TestEncrypt(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 
-		var got presenters.HttpEncrypt
+		var got presenters.HTTPEncrypt
 		json.NewDecoder(response.Body).Decode(&got)
 
 		if got.EncryptedData == "" {
@@ -380,7 +392,7 @@ func TestEncrypt(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, request)
-		var e presenters.HttpEncrypt
+		var e presenters.HTTPEncrypt
 		json.NewDecoder(response.Body).Decode(&e)
 
 		got := e.EncryptedData
@@ -429,7 +441,13 @@ func TestDecrypt(t *testing.T) {
 	cryptoStub := CryptoStub{}
 	server := KeyServer{&keyStoreStub, &cryptoStub}
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodPost, "/decrypt", nil)
+		msg, _ := crypto.Encrypt(&rsaKey.PublicKey, "testing")
+		requestBody, _ := json.Marshal(decrypt{
+			EncryptedData: string(msg),
+			KeyID:         "id",
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()
 
 		want := http.StatusOK
@@ -437,6 +455,135 @@ func TestDecrypt(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, want)
+	})
+	t.Run("Should return the correct properties", func(t *testing.T) {
+		msg, _ := crypto.Encrypt(&rsaKey.PublicKey, "testing")
+		requestBody, _ := json.Marshal(decrypt{
+			EncryptedData: string(msg),
+			KeyID:         "id",
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		var got presenters.HTTPDecrypt
+		json.NewDecoder(response.Body).Decode(&got)
+
+		if got.Data == "" {
+			t.Errorf("Expecting data prop, got %v", got.Data)
+		}
+	})
+	t.Run("Should call findKeys with the right params", func(t *testing.T) {
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope":      scope,
+			"expiration": expiration,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		respMap := map[string]interface{}{}
+		extractJSON(response.Body, respMap)
+
+		keyID := fmt.Sprintf("%v", respMap["keyID"])
+		msg, _ := crypto.Encrypt(&rsaKey.PublicKey, "testing")
+		requestBody, _ = json.Marshal(decrypt{
+			EncryptedData: string(msg),
+			KeyID:         keyID,
+		})
+		request, _ = http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, keyStoreStub.CalledWith, keyID)
+	})
+	t.Run("Should call Decrypt with the right params", func(t *testing.T) {
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope":      scope,
+			"expiration": expiration,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		respMap := map[string]interface{}{}
+		extractJSON(response.Body, respMap)
+
+		keyID := fmt.Sprintf("%v", respMap["keyID"])
+		msg, _ := crypto.Encrypt(&rsaKey.PublicKey, "testing")
+		requestBody, _ = json.Marshal(decrypt{
+			EncryptedData: string(msg),
+			KeyID:         keyID,
+		})
+		request, _ = http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, cryptoStub.CalledWith, string(msg))
+		assertInsideSlice(t, cryptoStub.CalledWith, keyStoreStub.LastDeliveredKey.Priv)
+	})
+	t.Run("Should return a internal server error if there was a problem decrypting", func(t *testing.T) {
+		scope := "testing"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope":      scope,
+			"expiration": expiration,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		respMap := map[string]interface{}{}
+		extractJSON(response.Body, respMap)
+
+		keyID := fmt.Sprintf("%v", respMap["keyID"])
+		requestBody, _ = json.Marshal(decrypt{
+			EncryptedData: "ERROR",
+			KeyID:         keyID,
+		})
+		request, _ = http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
+		response = httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusInternalServerError)
+		assertInsideJSON(t, response.Body, "message", "There was an unexpected error")
+	})
+	t.Run("Should return a precondition fail if the key does not exists", func(t *testing.T) {
+		requestBody, _ := json.Marshal(map[string]string{
+			"keyID": "notFound",
+		})
+		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusPreconditionFailed)
+		assertInsideJSON(t, response.Body, "message", "Key was not found")
+	})
+	t.Run("Should return a internal server error if there is a error while finding key", func(t *testing.T) {
+		requestBody, _ := json.Marshal(map[string]string{
+			"keyID": "otherError",
+		})
+		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusInternalServerError)
+		assertInsideJSON(t, response.Body, "message", "There was an unexpected error")
+	})
+	t.Run("If uses a unsuported method", func(t *testing.T) {
+		t.Run("Should return a method not allowed", func(t *testing.T) {
+			want := http.StatusMethodNotAllowed
+			getRequest, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("/decrypt"), nil)
+			response := httptest.NewRecorder()
+			server.ServeHTTP(response, getRequest)
+
+			assertStatus(t, response.Code, want)
+			assertInsideJSON(t, response.Body, "message", "Method not allowed")
+		})
 	})
 }
 
