@@ -5,8 +5,10 @@ import (
 	"crypto/rsa"
 )
 
-type InMemoryKeySource struct {}
+// SynchronousKeySource simple key source
+type SynchronousKeySource struct{}
 
-func (s *InMemoryKeySource) Take() (*rsa.PrivateKey, error) {
+// Take Takes one key from the source
+func (s *SynchronousKeySource) Take() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, 2048)
 }

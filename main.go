@@ -7,9 +7,9 @@ import (
 	"github.com/cesarFuhr/gocrypto/keys"
 )
 
-var inMemKeySource = keys.InMemoryKeySource{}
+var syncKeySource = keys.SynchronousKeySource{}
 var inMemKeyRepo = keys.InMemoryKeyRepository{Store: make(map[string]keys.Key)}
-var keyStore = keys.KeyStore{Source: &inMemKeySource, Repo: &inMemKeyRepo}
+var keyStore = keys.KeyStore{Source: &syncKeySource, Repo: &inMemKeyRepo}
 var crypto = JWECrypto{}
 
 func main() {
