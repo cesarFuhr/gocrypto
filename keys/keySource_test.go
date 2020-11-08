@@ -10,7 +10,6 @@ import (
 type keyGeneratorStub struct {
 	called int
 	stored int
-	wg     sync.WaitGroup
 	mu     sync.Mutex
 }
 
@@ -34,8 +33,7 @@ func TestSyncTake(t *testing.T) {
 }
 
 func TestPoolTake(t *testing.T) {
-	var waitGroup sync.WaitGroup
-	keyGenStub := keyGeneratorStub{wg: waitGroup}
+	keyGenStub := keyGeneratorStub{}
 	keySource := PoolKeySource{make(chan *rsa.PrivateKey, 2), &keyGenStub}
 
 	t.Run("returns a valid rsa PrivKey", func(t *testing.T) {
@@ -61,6 +59,18 @@ func TestPoolTake(t *testing.T) {
 		<-keySource.Pool
 		assertValue(t, keyGenStub.called, 1)
 		assertValue(t, len(keySource.Pool), 0)
+	})
+}
+
+func TestPoolWarmUp(t *testing.T) {
+	keyGenStub := keyGeneratorStub{}
+	keySource := PoolKeySource{make(chan *rsa.PrivateKey, 5), &keyGenStub}
+	t.Run("fills up the pool when called", func(t *testing.T) {
+		keySource.WarmUp()
+		wLen := len(keySource.Pool)
+		cap := cap(keySource.Pool)
+
+		assertValue(t, wLen, cap)
 	})
 }
 

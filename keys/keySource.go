@@ -48,3 +48,13 @@ func (s *PoolKeySource) addKeyToPoll() {
 		s.Pool <- k
 	}
 }
+
+func (s *PoolKeySource) WarmUp() {
+	for len(s.Pool) < cap(s.Pool) {
+		k, err := s.Kgen.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			panic(err)
+		}
+		s.Pool <- k
+	}
+}
