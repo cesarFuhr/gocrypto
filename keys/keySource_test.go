@@ -42,7 +42,7 @@ func TestPoolTake(t *testing.T) {
 		got, _ := keySource.Take()
 		want := mockKeys
 
-		<-keySource.pool
+		<-keySource.Pool
 		assertType(t, got, want)
 	})
 	t.Run("if there is no keys in the pool calls GenerateKey, and create one ascyncronouslly", func(t *testing.T) {
@@ -50,17 +50,17 @@ func TestPoolTake(t *testing.T) {
 		got, _ := keySource.Take()
 		want := mockKeys
 
-		<-keySource.pool
+		<-keySource.Pool
 		assertType(t, got, want)
 	})
 	t.Run("if there is keys in the pool should not call GenerateKey, pop one key and create one ascyncronouslly", func(t *testing.T) {
-		keySource.pool <- mockKeys
+		keySource.Pool <- mockKeys
 		keyGenStub.called = 0
 		keySource.Take()
 
-		<-keySource.pool
+		<-keySource.Pool
 		assertValue(t, keyGenStub.called, 1)
-		assertValue(t, len(keySource.pool), 0)
+		assertValue(t, len(keySource.Pool), 0)
 	})
 }
 
