@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  app:
+    ports:
+      - "5000:5000"
+    build:
+      context: .
+    depends_on: 
+      - db
+  db:
+    image: "postgres:alpine"
+    restart: always
+    ports:
+      - "5432:5432"
+    environment: 
+      POSTGRES_PASSWORD: pass

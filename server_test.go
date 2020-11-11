@@ -441,7 +441,7 @@ func TestDecrypt(t *testing.T) {
 	cryptoStub := CryptoStub{}
 	server := KeyServer{&keyStoreStub, &cryptoStub}
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
-		msg, _ := crypto.Encrypt(&rsaKey.PublicKey, "testing")
+		msg, _ := cryptoStub.Encrypt(&rsaKey.PublicKey, "testing")
 		requestBody, _ := json.Marshal(decrypt{
 			EncryptedData: string(msg),
 			KeyID:         "id",
@@ -457,7 +457,7 @@ func TestDecrypt(t *testing.T) {
 		assertStatus(t, response.Code, want)
 	})
 	t.Run("Should return the correct properties", func(t *testing.T) {
-		msg, _ := crypto.Encrypt(&rsaKey.PublicKey, "testing")
+		msg, _ := cryptoStub.Encrypt(&rsaKey.PublicKey, "testing")
 		requestBody, _ := json.Marshal(decrypt{
 			EncryptedData: string(msg),
 			KeyID:         "id",
@@ -490,7 +490,7 @@ func TestDecrypt(t *testing.T) {
 		extractJSON(response.Body, respMap)
 
 		keyID := fmt.Sprintf("%v", respMap["keyID"])
-		msg, _ := crypto.Encrypt(&rsaKey.PublicKey, "testing")
+		msg, _ := cryptoStub.Encrypt(&rsaKey.PublicKey, "testing")
 		requestBody, _ = json.Marshal(decrypt{
 			EncryptedData: string(msg),
 			KeyID:         keyID,
@@ -515,7 +515,7 @@ func TestDecrypt(t *testing.T) {
 		extractJSON(response.Body, respMap)
 
 		keyID := fmt.Sprintf("%v", respMap["keyID"])
-		msg, _ := crypto.Encrypt(&rsaKey.PublicKey, "testing")
+		msg, _ := cryptoStub.Encrypt(&rsaKey.PublicKey, "testing")
 		requestBody, _ = json.Marshal(decrypt{
 			EncryptedData: string(msg),
 			KeyID:         keyID,

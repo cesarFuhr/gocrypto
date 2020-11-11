@@ -49,6 +49,7 @@ func (s *PoolKeySource) addKeyToPoll() {
 	}
 }
 
+// WarmUp fills the bufered channel with keys
 func (s *PoolKeySource) WarmUp() {
 	for len(s.Pool) < cap(s.Pool) {
 		k, err := s.Kgen.GenerateKey(rand.Reader, 2048)

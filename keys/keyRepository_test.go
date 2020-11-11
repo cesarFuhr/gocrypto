@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func FindKeyTest(t *testing.T) {
-	keyRepo := InMemoryKeyRepository{}
+func TestMemFindKey(t *testing.T) {
+	keyRepo := InMemoryKeyRepository{map[string]Key{}}
 
 	t.Run("Should return a Key", func(t *testing.T) {
 		got, _ := keyRepo.FindKey("1")
@@ -28,8 +28,8 @@ func FindKeyTest(t *testing.T) {
 	})
 }
 
-func InsertKeyTest(t *testing.T) {
-	keyRepo := InMemoryKeyRepository{}
+func TestMemInsertKey(t *testing.T) {
+	keyRepo := InMemoryKeyRepository{map[string]Key{}}
 
 	t.Run("Should insert a Key", func(t *testing.T) {
 		key := Key{ID: "1"}
