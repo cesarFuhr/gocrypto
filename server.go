@@ -28,7 +28,7 @@ type decrypt struct {
 }
 
 type keyStoreInterface interface {
-	CreateKey(string, time.Time) keys.Key
+	CreateKey(string, time.Time) (keys.Key, error)
 	FindKey(string) (keys.Key, error)
 }
 
@@ -164,7 +164,11 @@ func (s *KeyServer) createKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := s.keyStore.CreateKey(o.Scope, exp)
+	key, err := s.keyStore.CreateKey(o.Scope, exp)
+	if err != nil {
+		internalServerError(w)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(presenters.NewHTTPCreateKey(key))

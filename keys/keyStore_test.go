@@ -40,7 +40,7 @@ func TestCreateKey(t *testing.T) {
 		Repo:   &KeyRepositoryStub{map[string]Key{}},
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
-		got := keyStore.CreateKey("scope", time.Now())
+		got, _ := keyStore.CreateKey("scope", time.Now())
 		want := Key{}
 		want.Priv, _ = rsa.GenerateKey(rand.Reader, 2048)
 		want.Pub = &want.Priv.PublicKey
@@ -50,13 +50,13 @@ func TestCreateKey(t *testing.T) {
 		assertType(t, got.Pub, want.Pub)
 	})
 	t.Run("Should return expiration date", func(t *testing.T) {
-		key := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
+		key, _ := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
 		got := key.Expiration
 
 		assertTime(t, got, time.Now().AddDate(0, 0, 1))
 	})
 	t.Run("returned Keys should have the scope property", func(t *testing.T) {
-		key := keyStore.CreateKey("scope", time.Now())
+		key, _ := keyStore.CreateKey("scope", time.Now())
 		got := key.Scope
 		want := "scope"
 
@@ -71,12 +71,12 @@ func TestFindKey(t *testing.T) {
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
 		got, _ := keyStore.FindKey("id")
-		want := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
+		want, _ := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
 
 		assertType(t, got, want)
 	})
 	t.Run("Should return the correct keypair", func(t *testing.T) {
-		key := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
+		key, _ := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
 		found, _ := keyStore.FindKey(key.ID)
 
 		assertString(t, found.ID, key.ID)
@@ -97,12 +97,12 @@ func TestFindScopedKey(t *testing.T) {
 	}
 	t.Run("Should return a keypair", func(t *testing.T) {
 		got, _ := keyStore.FindScopedKey("id", "scope")
-		want := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
+		want, _ := keyStore.CreateKey("scope", time.Now().AddDate(0, 0, 1))
 
 		assertType(t, got, want)
 	})
 	t.Run("Should return an error if Key is out of scope", func(t *testing.T) {
-		key := keyStore.CreateKey("scope1", time.Now().AddDate(0, 0, 1))
+		key, _ := keyStore.CreateKey("scope1", time.Now().AddDate(0, 0, 1))
 		_, err := keyStore.FindScopedKey(key.ID, "scope2")
 
 		if err != ErrKeyOutOfScope {

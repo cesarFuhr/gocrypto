@@ -28,15 +28,18 @@ type KeyStoreStub struct {
 
 var rsaKey, _ = rsa.GenerateKey(rand.Reader, 4098)
 
-func (s *KeyStoreStub) CreateKey(scope string, exp time.Time) keys.Key {
+func (s *KeyStoreStub) CreateKey(scope string, exp time.Time) (keys.Key, error) {
 	s.CalledWith = []interface{}{scope, exp}
+	if scope == "ERROR" {
+		return keys.Key{}, errors.New("A ERROR")
+	}
 	return keys.Key{
 		Scope:      scope,
 		Expiration: time.Now().AddDate(0, 0, 1),
 		ID:         uuid.New().String(),
 		Pub:        &rsaKey.PublicKey,
 		Priv:       rsaKey,
-	}
+	}, nil
 }
 
 func (s *KeyStoreStub) FindKey(id string) (keys.Key, error) {
@@ -153,6 +156,21 @@ func TestPOSTKeys(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, want)
+	})
+	t.Run("Should return a internal server error if there was an error creating keys", func(t *testing.T) {
+		scope := "ERROR"
+		expiration := time.Now().UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+		requestBody, _ := json.Marshal(map[string]string{
+			"scope":      scope,
+			"expiration": expiration,
+		})
+		request, _ := http.NewRequest(http.MethodPost, "/keys", bytes.NewBuffer(requestBody))
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusInternalServerError)
+		assertInsideJSON(t, response.Body, "message", "There was an unexpected error")
 	})
 	t.Run("Should return a BadRequest if body is nil", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/keys", nil)

@@ -35,7 +35,7 @@ type KeyStore struct {
 }
 
 // CreateKey Creates a Key, scoping it and setting the expiration
-func (s *KeyStore) CreateKey(scope string, expiration time.Time) Key {
+func (s *KeyStore) CreateKey(scope string, expiration time.Time) (Key, error) {
 	newKey, _ := s.Source.Take()
 	key := Key{
 		Priv:       newKey,
@@ -45,9 +45,11 @@ func (s *KeyStore) CreateKey(scope string, expiration time.Time) Key {
 		ID:         uuid.New().String(),
 	}
 
-	s.Repo.InsertKey(key)
+	if err := s.Repo.InsertKey(key); err != nil {
+		return Key{}, err
+	}
 
-	return key
+	return key, nil
 }
 
 // ErrKeyNotFound the Key with the requested ID was not found in this store
