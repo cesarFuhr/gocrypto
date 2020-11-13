@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	// Is there any other way?
 	_ "github.com/lib/pq"
 )
 
