@@ -12,7 +12,7 @@ var pool = make(chan *rsa.PrivateKey, 10)
 var store = map[string]keys.Key{}
 var gen = keys.KeyGenerator{}
 var poolKeySource = keys.PoolKeySource{Pool: pool, Kgen: &gen}
-var sqlKeyRepo = keys.SQLKeyRepository{Store: store, Cfg: keys.SQLConfigs{
+var sqlKeyRepo = keys.SQLKeyRepository{Cfg: keys.SQLConfigs{
 	Host:     "db",
 	Port:     5432,
 	User:     "postgres",
