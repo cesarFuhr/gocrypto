@@ -26,10 +26,20 @@ func (g *KeyGenerator) GenerateKey(r io.Reader, s int) (*rsa.PrivateKey, error) 
 	return rsa.GenerateKey(r, s)
 }
 
+// NewPoolKeySource creates initialized PoolKeySource
+func NewPoolKeySource(keySize int, keyPoolSize int) PoolKeySource {
+	var s PoolKeySource
+	s.keySize = keySize
+	s.Kgen = &KeyGenerator{}
+	s.Pool = make(chan *rsa.PrivateKey, keyPoolSize)
+	return s
+}
+
 // PoolKeySource a key source based on a pool of keys
 type PoolKeySource struct {
-	Pool chan *rsa.PrivateKey
-	Kgen keyGenerator
+	Pool    chan *rsa.PrivateKey
+	Kgen    keyGenerator
+	keySize int
 }
 
 // Take Takes one key from the source
@@ -39,12 +49,12 @@ func (s *PoolKeySource) Take() (*rsa.PrivateKey, error) {
 		k := <-s.Pool
 		return k, nil
 	}
-	return s.Kgen.GenerateKey(rand.Reader, 2048)
+	return s.Kgen.GenerateKey(rand.Reader, s.keySize)
 }
 
 func (s *PoolKeySource) addKeyToPoll() {
 	if len(s.Pool) < cap(s.Pool) {
-		k, _ := s.Kgen.GenerateKey(rand.Reader, 2048)
+		k, _ := s.Kgen.GenerateKey(rand.Reader, s.keySize)
 		s.Pool <- k
 	}
 }
@@ -52,7 +62,7 @@ func (s *PoolKeySource) addKeyToPoll() {
 // WarmUp fills the bufered channel with keys
 func (s *PoolKeySource) WarmUp() {
 	for len(s.Pool) < cap(s.Pool) {
-		k, err := s.Kgen.GenerateKey(rand.Reader, 2048)
+		k, err := s.Kgen.GenerateKey(rand.Reader, s.keySize)
 		if err != nil {
 			panic(err)
 		}

@@ -34,7 +34,7 @@ func TestSyncTake(t *testing.T) {
 
 func TestPoolTake(t *testing.T) {
 	keyGenStub := keyGeneratorStub{}
-	keySource := PoolKeySource{make(chan *rsa.PrivateKey, 2), &keyGenStub}
+	keySource := PoolKeySource{make(chan *rsa.PrivateKey, 2), &keyGenStub, 2048}
 
 	t.Run("returns a valid rsa PrivKey", func(t *testing.T) {
 		got, _ := keySource.Take()
@@ -64,7 +64,7 @@ func TestPoolTake(t *testing.T) {
 
 func TestPoolWarmUp(t *testing.T) {
 	keyGenStub := keyGeneratorStub{}
-	keySource := PoolKeySource{make(chan *rsa.PrivateKey, 5), &keyGenStub}
+	keySource := PoolKeySource{make(chan *rsa.PrivateKey, 5), &keyGenStub, 2048}
 	t.Run("fills up the pool when called", func(t *testing.T) {
 		keySource.WarmUp()
 		wLen := len(keySource.Pool)

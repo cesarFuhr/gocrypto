@@ -24,10 +24,10 @@ RUN go build -o main .
 WORKDIR /dist
 
 # Copy binary from build to main folder
-RUN cp /build/main .
+RUN cp /build/main -d .
 
 # Export necessary port
 EXPOSE 5000
 
 # Command to run when starting the container
-CMD ["/dist/main"]
+CMD ["/dist/main", "-e"]
