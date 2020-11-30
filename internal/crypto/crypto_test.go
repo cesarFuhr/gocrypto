@@ -1,21 +1,26 @@
-package main
+package crypto
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"testing"
 	"time"
 
-	"github.com/cesarFuhr/gocrypto/keys"
+	"github.com/cesarFuhr/gocrypto/internal/keys"
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwe"
 )
 
-var key = keys.Key{
-	Scope:      "scope",
-	ID:         "id",
-	Expiration: time.Now().AddDate(0, 0, 1),
-	Priv:       rsaKey,
-	Pub:        &rsaKey.PublicKey,
-}
+var (
+	rsaKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+	key       = keys.Key{
+		Scope:      "scope",
+		ID:         "id",
+		Expiration: time.Now().AddDate(0, 0, 1),
+		Priv:       rsaKey,
+		Pub:        &rsaKey.PublicKey,
+	}
+)
 
 func TestCryptoEncrypt(t *testing.T) {
 	crypto := JWECrypto{}
