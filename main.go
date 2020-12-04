@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cesarFuhr/gocrypto/keys"
+	server "github.com/cesarFuhr/gocrypto/internal"
+	"github.com/cesarFuhr/gocrypto/internal/adapters"
+	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
+	"github.com/cesarFuhr/gocrypto/internal/ports"
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 )
@@ -24,10 +27,10 @@ func run() {
 		panic(err)
 	}
 
-	keySource := keys.NewPoolKeySource(cfg.App.KeySource.RSAKeySize, cfg.App.KeySource.PoolSize)
+	keySource := adapters.NewPoolKeySource(cfg.App.KeySource.RSAKeySize, cfg.App.KeySource.PoolSize)
 	keySource.WarmUp()
 
-	sqlKeyRepo := keys.SQLKeyRepository{Cfg: keys.SQLConfigs{
+	sqlKeyRepo := adapters.SQLKeyRepository{Cfg: adapters.SQLConfigs{
 		Host:     cfg.Db.Host,
 		Port:     cfg.Db.Port,
 		User:     cfg.Db.User,
@@ -37,10 +40,10 @@ func run() {
 	}}
 	sqlKeyRepo.Connect()
 
-	keyStore := keys.KeyStore{Source: &keySource, Repo: &sqlKeyRepo}
-	crypto := JWECrypto{}
-	server := &KeyServer{&keyStore, &crypto}
-	if err := http.ListenAndServe(":"+cfg.Server.Port, server); err != nil {
+	keyService := keys.NewKeyService(&keySource, &sqlKeyRepo)
+	keyHandler := ports.NewKeyHandler(keyService)
+	httpServer := server.NewHTTPServer(keyHandler)
+	if err := http.ListenAndServe(":"+cfg.Server.Port, httpServer); err != nil {
 		log.Fatalf("could not listen on port 5000 %v", err)
 	}
 }
