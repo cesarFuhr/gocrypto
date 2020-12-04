@@ -23,9 +23,31 @@ func (h *keyHandlerStub) Get(w http.ResponseWriter, r *http.Request) {
 	h.G.CalledWith = []interface{}{w, r}
 }
 
+type encryptHandlerStub struct {
+	P struct {
+		CalledWith []interface{}
+	}
+}
+
+func (h *encryptHandlerStub) Post(w http.ResponseWriter, r *http.Request) {
+	h.P.CalledWith = []interface{}{w, r}
+}
+
+type decryptHandlerStub struct {
+	P struct {
+		CalledWith []interface{}
+	}
+}
+
+func (h *decryptHandlerStub) Post(w http.ResponseWriter, r *http.Request) {
+	h.P.CalledWith = []interface{}{w, r}
+}
+
 func TestKeysEndpoint(t *testing.T) {
 	kH := keyHandlerStub{}
-	server := httpServer{&kH}
+	eH := encryptHandlerStub{}
+	dH := decryptHandlerStub{}
+	server := httpServer{&kH, &eH, &dH}
 	t.Run("calls keyHandler.Post in a /keys http POST", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/keys", nil)
 		response := httptest.NewRecorder()
@@ -46,6 +68,54 @@ func TestKeysEndpoint(t *testing.T) {
 	})
 	t.Run("returns method not allowed for any other method", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPatch, "/keys", nil)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertValue(t, response.Code, http.StatusMethodNotAllowed)
+	})
+}
+
+func TestEncryptionEndpoint(t *testing.T) {
+	kH := keyHandlerStub{}
+	eH := encryptHandlerStub{}
+	dH := decryptHandlerStub{}
+	server := httpServer{&kH, &eH, &dH}
+	t.Run("calls encryptHandler.Post in a /encrypt http POST", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodPost, "/encrypt", nil)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, eH.P.CalledWith, response)
+		assertInsideSlice(t, eH.P.CalledWith, request)
+	})
+	t.Run("returns method not allowed for any other method", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodPatch, "/encrypt", nil)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertValue(t, response.Code, http.StatusMethodNotAllowed)
+	})
+}
+
+func TestDecryptionEndpoint(t *testing.T) {
+	kH := keyHandlerStub{}
+	eH := encryptHandlerStub{}
+	dH := decryptHandlerStub{}
+	server := httpServer{&kH, &eH, &dH}
+	t.Run("calls decryptHandler.Post in a /decrypt http POST", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodPost, "/decrypt", nil)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, dH.P.CalledWith, response)
+		assertInsideSlice(t, dH.P.CalledWith, request)
+	})
+	t.Run("returns method not allowed for any other method", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodPatch, "/decrypt", nil)
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
