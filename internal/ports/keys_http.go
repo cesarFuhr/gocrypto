@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
-	"github.com/cesarFuhr/gocrypto/internal/ports/presenters"
 )
 
 type keyOpts struct {
@@ -20,14 +19,15 @@ type keyHandler struct {
 	service keys.KeyService
 }
 
-// KeyHandlerInterface describes a http handler interface
-type KeyHandlerInterface interface {
+// KeyHandler describes a http handler interface
+type KeyHandler interface {
 	Post(w http.ResponseWriter, r *http.Request)
+	Get(w http.ResponseWriter, r *http.Request)
 }
 
 // NewKeyHandler creates a new http key handler
-func NewKeyHandler(s keys.KeyService) KeyHandlerInterface {
-	return keyHandler{
+func NewKeyHandler(s keys.KeyService) KeyHandler {
+	return &keyHandler{
 		service: s,
 	}
 }
@@ -40,13 +40,13 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 		var mr *malformedRequest
 		if errors.As(err, &mr) {
 			w.WriteHeader(mr.status)
-			json.NewEncoder(w).Encode(presenters.HTTPError{
+			json.NewEncoder(w).Encode(HTTPError{
 				Message: mr.msg,
 			})
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(presenters.HTTPError{
+		json.NewEncoder(w).Encode(HTTPError{
 			Message: fmt.Sprint(err),
 		})
 		return
@@ -55,7 +55,7 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	exp, err := time.Parse(time.RFC3339, o.Expiration)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(presenters.HTTPError{
+		json.NewEncoder(w).Encode(HTTPError{
 			Message: "Invalid: expiration property format",
 		})
 		return
@@ -68,6 +68,27 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(presenters.NewHTTPCreateKey(key))
+	json.NewEncoder(w).Encode(NewHTTPCreateKey(key))
+	return
+}
+
+func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("keyID")
+
+	key, err := h.service.FindKey(id)
+	if err != nil {
+		if err == keys.ErrKeyNotFound {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(HTTPError{
+				Message: "Key was not found",
+			})
+			return
+		}
+		internalServerError(w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(NewHTTPCreateKey(key))
 	return
 }

@@ -35,7 +35,7 @@ func (p *KeySourceStub) Take() (*rsa.PrivateKey, error) {
 }
 
 func TestCreateKey(t *testing.T) {
-	keyStore := KeyService{
+	keyStore := keyService{
 		Source: &KeySourceStub{},
 		Repo:   &KeyRepositoryStub{map[string]Key{}},
 	}
@@ -65,7 +65,7 @@ func TestCreateKey(t *testing.T) {
 }
 
 func TestFindKey(t *testing.T) {
-	keyStore := KeyService{
+	keyStore := keyService{
 		Source: &KeySourceStub{},
 		Repo:   &KeyRepositoryStub{map[string]Key{}},
 	}
@@ -91,7 +91,7 @@ func TestFindKey(t *testing.T) {
 }
 
 func TestFindScopedKey(t *testing.T) {
-	keyStore := KeyService{
+	keyStore := keyService{
 		Source: &KeySourceStub{},
 		Repo:   &KeyRepositoryStub{map[string]Key{}},
 	}
@@ -123,7 +123,7 @@ func TestNewKeyService(t *testing.T) {
 	repo := &KeyRepositoryStub{}
 	t.Run("Returns a valid KeyService", func(t *testing.T) {
 		got := NewKeyService(source, repo)
-		want := &KeyService{}
+		want := &keyService{}
 		assertType(t, got, want)
 	})
 }

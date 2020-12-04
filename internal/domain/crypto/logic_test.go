@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cesarFuhr/gocrypto/internal/keys"
+	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwe"
 )
@@ -22,10 +22,16 @@ var (
 	}
 )
 
+type RepositoryStub struct{}
+
+func (r *RepositoryStub) FindKey(id string) (keys.Key, error) {
+	return key, nil
+}
+
 func TestCryptoEncrypt(t *testing.T) {
-	crypto := JWECrypto{}
+	crypto := NewCryptoService(&RepositoryStub{})
 	t.Run("Should return a valid JWE", func(t *testing.T) {
-		got, _ := crypto.Encrypt(key.Pub, "testingOK")
+		got, _ := crypto.Encrypt("id", "testingOK")
 
 		if _, err := jwe.Decrypt(got, jwa.RSA_OAEP_256, key.Priv); err != nil {
 			t.Errorf("Invalid jwe: %v", err)
@@ -33,7 +39,7 @@ func TestCryptoEncrypt(t *testing.T) {
 	})
 	t.Run("Should be able to decrypt back", func(t *testing.T) {
 		want := "test"
-		encrypted, _ := crypto.Encrypt(key.Pub, want)
+		encrypted, _ := crypto.Encrypt("id", want)
 
 		decrypted, _ := jwe.Decrypt(encrypted, jwa.RSA_OAEP_256, key.Priv)
 		got := string(decrypted)
@@ -45,12 +51,12 @@ func TestCryptoEncrypt(t *testing.T) {
 }
 
 func TestCryptoDecrypt(t *testing.T) {
-	crypto := JWECrypto{}
+	crypto := cryptoService{&RepositoryStub{}}
 	t.Run("Should be able to decrypt a encrypted message", func(t *testing.T) {
 		want := "test"
-		encrypted, _ := crypto.Encrypt(key.Pub, want)
+		encrypted, _ := crypto.Encrypt("id", want)
 
-		decrypted, _ := crypto.Decrypt(key.Priv, string(encrypted))
+		decrypted, _ := crypto.Decrypt("id", string(encrypted))
 		got := string(decrypted)
 
 		if want != got {

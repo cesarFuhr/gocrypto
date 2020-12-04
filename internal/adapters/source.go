@@ -1,4 +1,4 @@
-package keys
+package adapters
 
 import (
 	"crypto/rand"

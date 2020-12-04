@@ -1,9 +1,11 @@
-package presenters
+package ports
 
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
+	"net/http"
 	"time"
 
 	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
@@ -46,4 +48,11 @@ type HTTPEncrypt struct {
 // HTTPDecrypt representation of the encrypt response body
 type HTTPDecrypt struct {
 	Data string `json:"data"`
+}
+
+func internalServerError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusInternalServerError)
+	json.NewEncoder(w).Encode(HTTPError{
+		Message: "There was an unexpected error",
+	})
 }
