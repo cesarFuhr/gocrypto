@@ -9,6 +9,7 @@ import (
 
 	server "github.com/cesarFuhr/gocrypto/internal"
 	"github.com/cesarFuhr/gocrypto/internal/adapters"
+	"github.com/cesarFuhr/gocrypto/internal/domain/crypto"
 	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
 	"github.com/cesarFuhr/gocrypto/internal/ports"
 	"github.com/kelseyhightower/envconfig"
@@ -42,7 +43,13 @@ func run() {
 
 	keyService := keys.NewKeyService(&keySource, &sqlKeyRepo)
 	keyHandler := ports.NewKeyHandler(keyService)
-	httpServer := server.NewHTTPServer(keyHandler)
+
+	cryptoService := crypto.NewCryptoService(&sqlKeyRepo)
+	encryptHandler := ports.NewEncryptHandler(cryptoService)
+	decryptHandler := ports.NewDecryptHandler(cryptoService)
+
+	httpServer := server.NewHTTPServer(keyHandler, encryptHandler, decryptHandler)
+
 	if err := http.ListenAndServe(":"+cfg.Server.Port, httpServer); err != nil {
 		log.Fatalf("could not listen on port 5000 %v", err)
 	}
