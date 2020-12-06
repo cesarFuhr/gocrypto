@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/cesarFuhr/gocrypto/internal/domain/crypto"
-	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
+	"github.com/cesarFuhr/gocrypto/internal/app/domain/crypto"
+	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 )
 
 type encryptReqBody struct {

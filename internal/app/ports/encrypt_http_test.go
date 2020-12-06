@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
+	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 	"github.com/google/uuid"
 )
 

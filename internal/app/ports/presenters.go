@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
+	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 )
 
 // HTTPError Exception formatter to all http badRequests

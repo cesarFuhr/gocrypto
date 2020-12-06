@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
+	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 	// Is there any other way?
 	_ "github.com/lib/pq"
 )

@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/cesarFuhr/gocrypto/internal/ports"
+	"github.com/cesarFuhr/gocrypto/internal/app/ports"
 )
 
 // HTTPServer http server interface
@@ -11,15 +11,27 @@ type HTTPServer interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
+// HTTPLogger http server logger
+type HTTPLogger interface {
+	Info(...interface{})
+}
+
 type httpServer struct {
+	log            HTTPLogger
 	keysHandler    ports.KeyHandler
 	encryptHandler ports.EncryptHandler
 	decryptHandler ports.DecryptHandler
 }
 
 // NewHTTPServer creates a new http handler
-func NewHTTPServer(kH ports.KeyHandler, eH ports.EncryptHandler, dH ports.DecryptHandler) HTTPServer {
+func NewHTTPServer(
+	l HTTPLogger,
+	kH ports.KeyHandler,
+	eH ports.EncryptHandler,
+	dH ports.DecryptHandler,
+) HTTPServer {
 	return &httpServer{
+		log:            l,
 		keysHandler:    kH,
 		encryptHandler: eH,
 		decryptHandler: dH,
@@ -28,10 +40,11 @@ func NewHTTPServer(kH ports.KeyHandler, eH ports.EncryptHandler, dH ports.Decryp
 
 func (s *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router := http.NewServeMux()
+	logger := newLoggerMiddleware(s.log)
 
-	router.Handle("/keys", s.handleKeys(w, r))
-	router.Handle("/encrypt", s.handleEncrypt(w, r))
-	router.Handle("/decrypt", s.handleDecrypt(w, r))
+	router.Handle("/keys", logger(s.handleKeys(w, r)))
+	router.Handle("/encrypt", logger(s.handleEncrypt(w, r)))
+	router.Handle("/decrypt", logger(s.handleDecrypt(w, r)))
 
 	router.ServeHTTP(w, r)
 }

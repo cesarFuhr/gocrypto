@@ -43,11 +43,23 @@ func (h *decryptHandlerStub) Post(w http.ResponseWriter, r *http.Request) {
 	h.P.CalledWith = []interface{}{w, r}
 }
 
+type loggerStub struct {
+	CalledWith []interface{}
+}
+
+func (l *loggerStub) Info(args ...interface{}) {
+	l.CalledWith = args
+}
+
+var (
+	log    = loggerStub{}
+	kH     = keyHandlerStub{}
+	eH     = encryptHandlerStub{}
+	dH     = decryptHandlerStub{}
+	server = httpServer{&log, &kH, &eH, &dH}
+)
+
 func TestKeysEndpoint(t *testing.T) {
-	kH := keyHandlerStub{}
-	eH := encryptHandlerStub{}
-	dH := decryptHandlerStub{}
-	server := httpServer{&kH, &eH, &dH}
 	t.Run("calls keyHandler.Post in a /keys http POST", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/keys", nil)
 		response := httptest.NewRecorder()
@@ -74,13 +86,21 @@ func TestKeysEndpoint(t *testing.T) {
 
 		assertValue(t, response.Code, http.StatusMethodNotAllowed)
 	})
+	t.Run("calls logger.Info in /keys http Requests", func(t *testing.T) {
+		log.CalledWith = []interface{}{}
+		endpoint := "/keys"
+		method := http.MethodPost
+		request, _ := http.NewRequest(method, endpoint, nil)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, log.CalledWith, endpoint)
+		assertInsideSlice(t, log.CalledWith, method)
+	})
 }
 
 func TestEncryptionEndpoint(t *testing.T) {
-	kH := keyHandlerStub{}
-	eH := encryptHandlerStub{}
-	dH := decryptHandlerStub{}
-	server := httpServer{&kH, &eH, &dH}
 	t.Run("calls encryptHandler.Post in a /encrypt http POST", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/encrypt", nil)
 		response := httptest.NewRecorder()
@@ -98,13 +118,21 @@ func TestEncryptionEndpoint(t *testing.T) {
 
 		assertValue(t, response.Code, http.StatusMethodNotAllowed)
 	})
+	t.Run("calls logger.Info in /encrypt http Requests", func(t *testing.T) {
+		log.CalledWith = []interface{}{}
+		endpoint := "/encrypt"
+		method := http.MethodPost
+		request, _ := http.NewRequest(method, endpoint, nil)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, log.CalledWith, endpoint)
+		assertInsideSlice(t, log.CalledWith, method)
+	})
 }
 
 func TestDecryptionEndpoint(t *testing.T) {
-	kH := keyHandlerStub{}
-	eH := encryptHandlerStub{}
-	dH := decryptHandlerStub{}
-	server := httpServer{&kH, &eH, &dH}
 	t.Run("calls decryptHandler.Post in a /decrypt http POST", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodPost, "/decrypt", nil)
 		response := httptest.NewRecorder()
@@ -121,6 +149,18 @@ func TestDecryptionEndpoint(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertValue(t, response.Code, http.StatusMethodNotAllowed)
+	})
+	t.Run("calls logger.Info in /decrypt http Requests", func(t *testing.T) {
+		log.CalledWith = []interface{}{}
+		endpoint := "/decrypt"
+		method := http.MethodPost
+		request, _ := http.NewRequest(method, endpoint, nil)
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertInsideSlice(t, log.CalledWith, endpoint)
+		assertInsideSlice(t, log.CalledWith, method)
 	})
 }
 

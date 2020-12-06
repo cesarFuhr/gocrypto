@@ -2,18 +2,16 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
 	"net/http"
-	"os"
 
-	server "github.com/cesarFuhr/gocrypto/internal"
-	"github.com/cesarFuhr/gocrypto/internal/adapters"
-	"github.com/cesarFuhr/gocrypto/internal/domain/crypto"
-	"github.com/cesarFuhr/gocrypto/internal/domain/keys"
-	"github.com/cesarFuhr/gocrypto/internal/ports"
-	"github.com/kelseyhightower/envconfig"
-	"gopkg.in/yaml.v2"
+	server "github.com/cesarFuhr/gocrypto/internal/app"
+	"github.com/cesarFuhr/gocrypto/internal/app/adapters"
+	"github.com/cesarFuhr/gocrypto/internal/app/domain/crypto"
+	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
+	"github.com/cesarFuhr/gocrypto/internal/app/ports"
+	"github.com/cesarFuhr/gocrypto/internal/pkg/config"
+	"github.com/cesarFuhr/gocrypto/internal/pkg/logger"
 )
 
 func main() {
@@ -23,7 +21,7 @@ func main() {
 func run() {
 
 	cfgSource := getCfgSource()
-	cfg, err := loadConfigs(cfgSource)
+	cfg, err := config.LoadConfigs(cfgSource)
 	if err != nil {
 		panic(err)
 	}
@@ -39,7 +37,10 @@ func run() {
 		Dbname:   cfg.Db.Dbname,
 		Driver:   cfg.Db.Driver,
 	}}
-	sqlKeyRepo.Connect()
+	err = sqlKeyRepo.Connect()
+	if err != nil {
+		panic(err)
+	}
 
 	keyService := keys.NewKeyService(&keySource, &sqlKeyRepo)
 	keyHandler := ports.NewKeyHandler(keyService)
@@ -48,7 +49,9 @@ func run() {
 	encryptHandler := ports.NewEncryptHandler(cryptoService)
 	decryptHandler := ports.NewDecryptHandler(cryptoService)
 
-	httpServer := server.NewHTTPServer(keyHandler, encryptHandler, decryptHandler)
+	logger := logger.NewLogger()
+
+	httpServer := server.NewHTTPServer(logger, keyHandler, encryptHandler, decryptHandler)
 
 	if err := http.ListenAndServe(":"+cfg.Server.Port, httpServer); err != nil {
 		log.Fatalf("could not listen on port 5000 %v", err)
@@ -63,56 +66,4 @@ func getCfgSource() string {
 		return "env"
 	}
 	return "yaml"
-}
-
-func loadConfigs(t string) (config, error) {
-	switch t {
-	case "env":
-		return loadFromENV()
-	default:
-		f, err := os.Open("config.yaml")
-		if err != nil {
-			return config{}, err
-		}
-		defer f.Close()
-		return loadFromYAML(f)
-	}
-}
-
-func loadFromENV() (config, error) {
-	var cfg config
-	err := envconfig.Process("", &cfg)
-	if err != nil {
-		return config{}, err
-	}
-	return cfg, nil
-}
-
-func loadFromYAML(r io.Reader) (config, error) {
-	var cfg config
-	err := yaml.NewDecoder(r).Decode(&cfg)
-	if err != nil {
-		return config{}, nil
-	}
-	return cfg, nil
-}
-
-type config struct {
-	Server struct {
-		Port string `yaml:"port" envconfig:"SERVER_PORT"`
-	} `yaml:"server"`
-	Db struct {
-		Host     string `yaml:"host" envconfig:"DB_HOST"`
-		Port     int    `yaml:"port" envconfig:"DB_PORT"`
-		User     string `yaml:"user" envconfig:"DB_USER"`
-		Password string `yaml:"password" envconfig:"DB_PASSWORD"`
-		Dbname   string `yaml:"dbname" envconfig:"DB_NAME"`
-		Driver   string `yaml:"driver" envconfig:"DB_DRIVER"`
-	} `yaml:"database"`
-	App struct {
-		KeySource struct {
-			PoolSize   int `yaml:"poolsize" envconfig:"APP_KEYSOURCE_POOL_SIZE"`
-			RSAKeySize int `yaml:"rsakeysize" envconfig:"APP_KEYSOURCE_RSAKEY_SIZE"`
-		} `yaml:"keysource"`
-	} `yaml:"app"`
 }

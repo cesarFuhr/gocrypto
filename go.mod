@@ -7,6 +7,8 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lestrrat-go/jwx v1.0.5
-	github.com/lib/pq v1.8.0
-	gopkg.in/yaml.v2 v2.3.0
+	github.com/lib/pq v1.9.0
+	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/zap v1.16.0
+	gopkg.in/yaml.v2 v2.4.0
 )
