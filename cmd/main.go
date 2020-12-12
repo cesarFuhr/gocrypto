@@ -11,6 +11,7 @@ import (
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 	"github.com/cesarFuhr/gocrypto/internal/app/ports"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/config"
+	"github.com/cesarFuhr/gocrypto/internal/pkg/db"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/logger"
 )
 
@@ -26,21 +27,30 @@ func run() {
 		panic(err)
 	}
 
+	httpServer := bootstrapHTTPServer(cfg)
+
+	if err := http.ListenAndServe(":"+cfg.Server.Port, httpServer); err != nil {
+		log.Fatalf("could not listen on port 5000 %v", err)
+	}
+}
+
+func bootstrapHTTPServer(cfg config.Config) server.HTTPServer {
 	keySource := adapters.NewPoolKeySource(cfg.App.KeySource.RSAKeySize, cfg.App.KeySource.PoolSize)
 	keySource.WarmUp()
 
-	sqlKeyRepo := adapters.SQLKeyRepository{Cfg: adapters.SQLConfigs{
+	sqlDb, err := db.NewPGDatabase(db.PGConfigs{
 		Host:     cfg.Db.Host,
 		Port:     cfg.Db.Port,
 		User:     cfg.Db.User,
 		Password: cfg.Db.Password,
 		Dbname:   cfg.Db.Dbname,
 		Driver:   cfg.Db.Driver,
-	}}
-	err = sqlKeyRepo.Connect()
+	})
 	if err != nil {
 		panic(err)
 	}
+
+	sqlKeyRepo := adapters.NewSQLKeyRepository(sqlDb)
 
 	keyService := keys.NewKeyService(&keySource, &sqlKeyRepo)
 	keyHandler := ports.NewKeyHandler(keyService)
@@ -51,11 +61,7 @@ func run() {
 
 	logger := logger.NewLogger()
 
-	httpServer := server.NewHTTPServer(logger, keyHandler, encryptHandler, decryptHandler)
-
-	if err := http.ListenAndServe(":"+cfg.Server.Port, httpServer); err != nil {
-		log.Fatalf("could not listen on port 5000 %v", err)
-	}
+	return server.NewHTTPServer(logger, keyHandler, encryptHandler, decryptHandler)
 }
 
 func getCfgSource() string {

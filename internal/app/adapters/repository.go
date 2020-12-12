@@ -3,7 +3,6 @@ package adapters
 import (
 	"crypto/x509"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
@@ -31,21 +30,14 @@ func (r *InMemoryKeyRepository) InsertKey(key keys.Key) error {
 	return nil
 }
 
-// SQLConfigs configuration for a sql database
-type SQLConfigs struct {
-	Driver       string
-	Host         string
-	Port         int
-	User         string
-	Password     string
-	Dbname       string
-	MaxOpenConns int
+// NewSQLKeyRepository returns a new sql repository instance
+func NewSQLKeyRepository(db *sql.DB) SQLKeyRepository {
+	return SQLKeyRepository{db: db}
 }
 
 // SQLKeyRepository sql database persistency
 type SQLKeyRepository struct {
-	Cfg SQLConfigs
-	db  *sql.DB
+	db *sql.DB
 }
 
 var findKeyStatement = `
@@ -91,27 +83,4 @@ func (r *SQLKeyRepository) InsertKey(k keys.Key) error {
 		x509.MarshalPKCS1PublicKey(k.Pub),
 	)
 	return err
-}
-
-// Connect Created a connection with the database
-func (r *SQLKeyRepository) Connect() error {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		r.Cfg.Host, r.Cfg.Port, r.Cfg.User, r.Cfg.Password, r.Cfg.Dbname)
-
-	db, err := sql.Open(r.Cfg.Driver, psqlInfo)
-	if err != nil {
-		panic(err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		panic(err)
-	}
-
-	db.SetMaxOpenConns(r.Cfg.MaxOpenConns)
-
-	r.db = db
-	fmt.Println("Connected to SQLKeyRepository")
-	return nil
 }

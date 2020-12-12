@@ -15,6 +15,7 @@ services:
       - "APP_KEYSOURCE_POOL_SIZE=10"
     build:
       context: .
+      dockerfile: ./builds/Dockerfile
     depends_on: 
       - db
   db:
@@ -24,3 +25,4 @@ services:
       - "5432:5432"
     environment: 
       POSTGRES_PASSWORD: pass
+      POSTGRES_DB: gocrypto
