@@ -3,7 +3,6 @@ package ports
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -47,7 +46,7 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(HTTPError{
-			Message: fmt.Sprint(err),
+			Message: err.Error(),
 		})
 		return
 	}
@@ -74,6 +73,14 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 
 func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("keyID")
+
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HTTPError{
+			Message: "Missing id query param",
+		})
+		return
+	}
 
 	key, err := h.service.FindKey(id)
 	if err != nil {

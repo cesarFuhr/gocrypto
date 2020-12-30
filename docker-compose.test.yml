@@ -14,7 +14,7 @@ services:
       - "DB_PORT=5432"
       - "DB_USER=postgres"
       - "DB_PASSWORD=pass"
-      - "DB_NAME=gocrypto"
+      - "DB_NAME=postgres"
       - "DB_DRIVER=postgres"
       - "APP_KEYSOURCE_RSAKEY_SIZE=2048"
       - "APP_KEYSOURCE_POOL_SIZE=10"
@@ -30,8 +30,11 @@ services:
     restart: on-failure
     ports:
       - "5432:5432"
+    expose:
+      - "5432"
     environment: 
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: testdb
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=pass"
+      - "POSTGRES_DB=postgres"
     networks: 
       - integration-tests

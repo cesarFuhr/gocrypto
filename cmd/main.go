@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"log"
 	"net/http"
@@ -27,18 +28,16 @@ func run() {
 		panic(err)
 	}
 
-	httpServer := bootstrapHTTPServer(cfg)
+	db := bootstrapSQLDatabase(cfg)
+	httpServer := bootstrapHTTPServer(cfg, db)
 
 	if err := http.ListenAndServe(":"+cfg.Server.Port, httpServer); err != nil {
 		log.Fatalf("could not listen on port 5000 %v", err)
 	}
 }
 
-func bootstrapHTTPServer(cfg config.Config) server.HTTPServer {
-	keySource := adapters.NewPoolKeySource(cfg.App.KeySource.RSAKeySize, cfg.App.KeySource.PoolSize)
-	keySource.WarmUp()
-
-	sqlDb, err := db.NewPGDatabase(db.PGConfigs{
+func bootstrapSQLDatabase(cfg config.Config) *sql.DB {
+	sqlDB, err := db.NewPGDatabase(db.PGConfigs{
 		Host:     cfg.Db.Host,
 		Port:     cfg.Db.Port,
 		User:     cfg.Db.User,
@@ -49,8 +48,14 @@ func bootstrapHTTPServer(cfg config.Config) server.HTTPServer {
 	if err != nil {
 		panic(err)
 	}
+	return sqlDB
+}
 
-	sqlKeyRepo := adapters.NewSQLKeyRepository(sqlDb)
+func bootstrapHTTPServer(cfg config.Config, sqlDB *sql.DB) server.HTTPServer {
+	keySource := adapters.NewPoolKeySource(cfg.App.KeySource.RSAKeySize, cfg.App.KeySource.PoolSize)
+	keySource.WarmUp()
+
+	sqlKeyRepo := adapters.NewSQLKeyRepository(sqlDB)
 
 	keyService := keys.NewKeyService(&keySource, &sqlKeyRepo)
 	keyHandler := ports.NewKeyHandler(keyService)
