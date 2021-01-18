@@ -1,7 +1,6 @@
 package ports
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/crypto"
@@ -36,8 +35,7 @@ func (s *decryptHandler) Post(w http.ResponseWriter, r *http.Request) {
 	decrypted, err := s.service.Decrypt(o.KeyID, o.EncryptedData)
 	if err != nil {
 		if err == keys.ErrKeyNotFound {
-			w.WriteHeader(http.StatusPreconditionFailed)
-			json.NewEncoder(w).Encode(HTTPError{
+			replyJSON(w, http.StatusPreconditionFailed, HTTPError{
 				Message: "Key was not found",
 			})
 			return
@@ -46,8 +44,7 @@ func (s *decryptHandler) Post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(HTTPDecrypt{
+	replyJSON(w, http.StatusOK, HTTPDecrypt{
 		Data: string(decrypted),
 	})
 	return

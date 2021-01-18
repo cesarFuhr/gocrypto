@@ -3,8 +3,8 @@ package ports
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"net/http"
 	"time"
 
@@ -33,11 +33,8 @@ func NewHTTPCreateKey(k keys.Key) HTTPCreateKey {
 }
 
 func formatPublicKey(pubKey *rsa.PublicKey) string {
-	b := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: x509.MarshalPKCS1PublicKey(pubKey),
-	})
-	return string(b)
+	b := base64.RawStdEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(pubKey))
+	return b
 }
 
 // HTTPEncrypt representation of the encrypt response body
@@ -48,6 +45,12 @@ type HTTPEncrypt struct {
 // HTTPDecrypt representation of the encrypt response body
 type HTTPDecrypt struct {
 	Data string `json:"data"`
+}
+
+func replyJSON(w http.ResponseWriter, code int, obj interface{}) {
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(obj)
 }
 
 func internalServerError(w http.ResponseWriter) {
