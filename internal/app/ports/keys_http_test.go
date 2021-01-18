@@ -16,6 +16,7 @@ import (
 
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 )
 
 type KeyServiceStub struct {
@@ -178,23 +179,26 @@ func TestPOSTKeys(t *testing.T) {
 func TestGETKeys(t *testing.T) {
 	keyServiceStub := KeyServiceStub{}
 	h := NewKeyHandler(&keyServiceStub)
+	m := make(map[string]string)
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/keys", nil)
+		request, _ := http.NewRequest(http.MethodGet, "/keys/123", nil)
+		m["keyID"] = "123"
 		response := httptest.NewRecorder()
 
 		want := http.StatusOK
 
-		h.Get(response, request)
+		h.Get(response, mux.SetURLVars(request, m))
 
 		assertStatus(t, response.Code, want)
 	})
 	t.Run("Should return a Key if it was a success", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/keys", nil)
+		request, _ := http.NewRequest(http.MethodGet, "/keys/123", nil)
+		m["keyID"] = "123"
 		response := httptest.NewRecorder()
 
 		wants := []string{"publicKey", "keyID", "expiration"}
 
-		h.Get(response, request)
+		h.Get(response, mux.SetURLVars(request, m))
 		respMap := map[string]interface{}{}
 		extractJSON(response.Body, respMap)
 
@@ -218,17 +222,20 @@ func TestGETKeys(t *testing.T) {
 		respMap := map[string]interface{}{}
 		extractJSON(response.Body, respMap)
 
-		getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=%v", respMap["keyID"]), nil)
-		h.Get(response, getRequest)
+		getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys/%v", respMap["keyID"]), nil)
+		m["keyID"] = fmt.Sprint(respMap["keyID"])
+		h.Get(response, mux.SetURLVars(getRequest, m))
 
 		assertInsideSlice(t, keyServiceStub.CalledWith, respMap["keyID"])
 	})
 	t.Run("If key was not found", func(t *testing.T) {
 		t.Run("Should return a 404", func(t *testing.T) {
 			want := http.StatusNotFound
-			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=notFound"), nil)
+			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys/notFound"), nil)
+			m["keyID"] = "notFound"
 			response := httptest.NewRecorder()
-			h.Get(response, getRequest)
+
+			h.Get(response, mux.SetURLVars(getRequest, m))
 
 			assertStatus(t, response.Code, want)
 			assertInsideJSON(t, response.Body, "message", "Key was not found")
@@ -237,9 +244,10 @@ func TestGETKeys(t *testing.T) {
 	t.Run("If there was any other error", func(t *testing.T) {
 		t.Run("Should return a 500", func(t *testing.T) {
 			want := http.StatusInternalServerError
-			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys?keyID=otherError"), nil)
+			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys/otherError"), nil)
+			m["keyID"] = "otherError"
 			response := httptest.NewRecorder()
-			h.Get(response, getRequest)
+			h.Get(response, mux.SetURLVars(getRequest, m))
 
 			assertStatus(t, response.Code, want)
 			assertInsideJSON(t, response.Body, "message", "There was an unexpected error")

@@ -5,11 +5,11 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
+	"net/http"
 	"os"
 	"testing"
 	"time"
 
-	server "github.com/cesarFuhr/gocrypto/internal/app"
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/config"
 	"github.com/golang-migrate/migrate/v4"
@@ -20,7 +20,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-var httpServer server.HTTPServer
+var httpServer *http.Server
 
 func TestMain(m *testing.M) {
 	os.Exit(deferable(m))

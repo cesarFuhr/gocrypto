@@ -18,6 +18,10 @@ var (
 		"scope":      "test",
 		"expiration": time.Now().UTC().Format(time.RFC3339),
 	})
+	invalidCreateKeysBody, _ = json.Marshal(map[string]interface{}{
+		"scope":      "test",
+		"expiration": time.Now().UTC().Format(time.Kitchen),
+	})
 	mockKey keys.Key
 )
 
@@ -30,7 +34,7 @@ func TestKeys(t *testing.T) {
 		resultStatus int
 	}{
 		{
-			"Creates and return a public key in pem format",
+			"Creates and return a public key in der format",
 			http.MethodPost,
 			"/keys",
 			validCreateKeysBody,
@@ -38,22 +42,22 @@ func TestKeys(t *testing.T) {
 		},
 		{
 			"Returns a 400 bad request",
-			http.MethodGet,
+			http.MethodPost,
 			"/keys",
-			nil,
+			invalidCreateKeysBody,
 			400,
 		},
 		{
 			"Returns a 404 not found",
 			http.MethodGet,
-			"/keys?keyID=" + uuid.New().String(),
+			"/keys/" + uuid.New().String(),
 			nil,
 			404,
 		},
 		{
 			"Returns a public key in pem format",
 			http.MethodGet,
-			"/keys?keyID=" + mockKey.ID,
+			"/keys/" + mockKey.ID,
 			nil,
 			200,
 		},
@@ -71,7 +75,7 @@ func TestKeys(t *testing.T) {
 			request, _ := http.NewRequest(tt.method, tt.endpoint, reqBody)
 			response := httptest.NewRecorder()
 
-			httpServer.ServeHTTP(response, request)
+			httpServer.Handler.ServeHTTP(response, request)
 
 			if response.Code != tt.resultStatus {
 				t.Errorf("want %d, got %d", tt.resultStatus, response.Code)

@@ -31,7 +31,7 @@ func run() {
 	db := bootstrapSQLDatabase(cfg)
 	httpServer := bootstrapHTTPServer(cfg, db)
 
-	if err := http.ListenAndServe(":"+cfg.Server.Port, httpServer); err != nil {
+	if err := httpServer.ListenAndServe(); err != nil {
 		log.Fatalf("could not listen on port 5000 %v", err)
 	}
 }
@@ -51,7 +51,7 @@ func bootstrapSQLDatabase(cfg config.Config) *sql.DB {
 	return sqlDB
 }
 
-func bootstrapHTTPServer(cfg config.Config, sqlDB *sql.DB) server.HTTPServer {
+func bootstrapHTTPServer(cfg config.Config, sqlDB *sql.DB) *http.Server {
 	keySource := adapters.NewPoolKeySource(cfg.App.KeySource.RSAKeySize, cfg.App.KeySource.PoolSize)
 	keySource.WarmUp()
 
@@ -66,7 +66,10 @@ func bootstrapHTTPServer(cfg config.Config, sqlDB *sql.DB) server.HTTPServer {
 
 	logger := logger.NewLogger()
 
-	return server.NewHTTPServer(logger, keyHandler, encryptHandler, decryptHandler)
+	s := server.NewHTTPServer(logger, keyHandler, encryptHandler, decryptHandler)
+	s.Addr = ":" + cfg.Server.Port
+
+	return s
 }
 
 func getCfgSource() string {

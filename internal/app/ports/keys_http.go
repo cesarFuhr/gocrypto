@@ -1,12 +1,12 @@
 package ports
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
 
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
+	"github.com/gorilla/mux"
 )
 
 type keyOpts struct {
@@ -38,14 +38,12 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var mr *malformedRequest
 		if errors.As(err, &mr) {
-			w.WriteHeader(mr.status)
-			json.NewEncoder(w).Encode(HTTPError{
+			replyJSON(w, mr.status, HTTPError{
 				Message: mr.msg,
 			})
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(HTTPError{
+		replyJSON(w, http.StatusInternalServerError, HTTPError{
 			Message: err.Error(),
 		})
 		return
@@ -53,8 +51,7 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 
 	exp, err := time.Parse(time.RFC3339, o.Expiration)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(HTTPError{
+		replyJSON(w, http.StatusBadRequest, HTTPError{
 			Message: "Invalid: expiration property format",
 		})
 		return
@@ -66,18 +63,17 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(NewHTTPCreateKey(key))
+	replyJSON(w, http.StatusCreated, NewHTTPCreateKey(key))
 	return
 }
 
 func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("keyID")
+	params := mux.Vars(r)
+	id, ok := params["keyID"]
 
-	if id == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(HTTPError{
-			Message: "Missing id query param",
+	if ok == false {
+		replyJSON(w, http.StatusBadRequest, HTTPError{
+			Message: "missing path param keyID",
 		})
 		return
 	}
@@ -85,8 +81,7 @@ func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	key, err := h.service.FindKey(id)
 	if err != nil {
 		if err == keys.ErrKeyNotFound {
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(HTTPError{
+			replyJSON(w, http.StatusNotFound, HTTPError{
 				Message: "Key was not found",
 			})
 			return
@@ -95,7 +90,6 @@ func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(NewHTTPCreateKey(key))
+	replyJSON(w, http.StatusOK, NewHTTPCreateKey(key))
 	return
 }
