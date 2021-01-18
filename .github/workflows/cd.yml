@@ -16,4 +16,4 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASS }}
-          script: rm ${{ secrets.PROJECT_PATH }} && git clone https://github.com/cesarFuhr/gocrypto.git $$ cd ${{ secrets.PROJECT_PATH }} && docker-compose up -d
+          script: rm -r ${{ secrets.PROJECT_PATH }} && git clone https://github.com/cesarFuhr/gocrypto.git $$ cd ${{ secrets.PROJECT_PATH }} && docker-compose up -d
