@@ -1,0 +1,17 @@
+name: Integration tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run integration
+      run: docker-compose -f docker-compsoe.test.yml up --build --abort-on-container-exit app
