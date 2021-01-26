@@ -16,4 +16,4 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASS }}
-          script: cd gocrypto && git pull && docker-compose up --build -d
+          script: cd gocrypto && git pull && make run-docker
