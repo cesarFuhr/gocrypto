@@ -23,16 +23,16 @@ start-db:
 stop-docker:
 	docker-compose down
 
-unit-test:
+test-unit:
 	go test ./internal/...
 
-full-test:
+test-full:
 	docker-compose -f docker-compose.test.yml up -d db
 	docker-compose -f docker-compose.test.yml up --build test
 	docker-compose -f docker-compose.test.yml down
 
-unit-test-watch:
+test-unit-watch:
 	watcher -cmd="make unit-test" -keepalive=true
 
-full-test-watch:
+test-full-watch:
 	watcher -cmd="make full-test" -keepalive=true
