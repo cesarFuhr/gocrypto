@@ -14,4 +14,4 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Run integration
-      run: make full-test
+      run: make test-full
