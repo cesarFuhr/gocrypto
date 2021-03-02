@@ -4,7 +4,7 @@ name: CD
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   deploy:
@@ -16,4 +16,4 @@ jobs:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASS }}
-          script: cd gocrypto && git pull && make run-docker
+          script: make deploy-gocrypto
