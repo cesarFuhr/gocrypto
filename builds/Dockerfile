@@ -30,4 +30,4 @@ RUN cp /build/main -d .
 EXPOSE 5000
 
 # Command to run when starting the container
-CMD ["/dist/main", "-e"]
+CMD ["/dist/main"]

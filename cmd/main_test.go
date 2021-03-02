@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 }
 
 func deferable(m *testing.M) int {
-	cfg, err := config.LoadConfigs("env")
+	cfg, err := config.LoadConfigs()
 	if err != nil {
 		panic(err)
 	}

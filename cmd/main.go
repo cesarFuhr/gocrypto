@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"flag"
 	"log"
 	"net/http"
 
@@ -21,9 +20,7 @@ func main() {
 }
 
 func run() {
-
-	cfgSource := getCfgSource()
-	cfg, err := config.LoadConfigs(cfgSource)
+	cfg, err := config.LoadConfigs()
 	if err != nil {
 		panic(err)
 	}
@@ -70,14 +67,4 @@ func bootstrapHTTPServer(cfg config.Config, sqlDB *sql.DB) *http.Server {
 	s.Addr = ":" + cfg.Server.Port
 
 	return s
-}
-
-func getCfgSource() string {
-	var cfgFromEnv bool
-	flag.BoolVar(&cfgFromEnv, "e", false, "load config from environment")
-	flag.Parse()
-	if cfgFromEnv == true {
-		return "env"
-	}
-	return "yaml"
 }
