@@ -19,7 +19,19 @@ install:
 run: build
 	./main
 
-run-dev:
+run-dev: build
+	env SERVER_PORT=$(SERVER_PORT) \
+	DB_HOST=$(DB_HOST) \
+	DB_PORT=$(DB_PORT) \
+	DB_USER=$(DB_USER) \
+	DB_PASSWORD=$(DB_PASSWORD) \
+	DB_NAME=$(DB_NAME) \
+	DB_DRIVER=$(DB_DRIVER) \
+	APP_KEYSOURCE_POOL_SIZE=$(APP_KEYSOURCE_POOL_SIZE) \
+	APP_KEYSOURCE_RSAKEY_SIZE=$(APP_KEYSOURCE_RSAKEY_SIZE) \
+	./main
+
+watch-dev: build
 	env SERVER_PORT=$(SERVER_PORT) \
 	DB_HOST=$(DB_HOST) \
 	DB_PORT=$(DB_PORT) \

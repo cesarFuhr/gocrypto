@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	server "github.com/cesarFuhr/gocrypto/internal/app"
 	"github.com/cesarFuhr/gocrypto/internal/app/adapters"
@@ -12,6 +14,7 @@ import (
 	"github.com/cesarFuhr/gocrypto/internal/app/ports"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/config"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/db"
+	"github.com/cesarFuhr/gocrypto/internal/pkg/exit"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/logger"
 )
 
@@ -28,7 +31,12 @@ func run() {
 	db := bootstrapSQLDatabase(cfg)
 	httpServer := bootstrapHTTPServer(cfg, db)
 
-	if err := httpServer.ListenAndServe(); err != nil {
+	e := make(chan struct{}, 1)
+	exit.ListenToExit(e)
+
+	go gracefullShutdown(e, httpServer)
+
+	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("could not listen on port 5000 %v", err)
 	}
 }
@@ -67,4 +75,15 @@ func bootstrapHTTPServer(cfg config.Config, sqlDB *sql.DB) *http.Server {
 	s.Addr = ":" + cfg.Server.Port
 
 	return s
+}
+
+func gracefullShutdown(e chan struct{}, s *http.Server) {
+	<-e
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	if err := s.Shutdown(ctx); err != nil {
+		log.Fatalf("could not shutdown properly...")
+	}
+
+	cancel()
 }
