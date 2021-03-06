@@ -13,7 +13,7 @@ import (
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 	"github.com/cesarFuhr/gocrypto/internal/app/ports"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/config"
-	"github.com/cesarFuhr/gocrypto/internal/pkg/db"
+	"github.com/cesarFuhr/gocrypto/internal/pkg/database"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/exit"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/logger"
 )
@@ -29,6 +29,8 @@ func run() {
 	}
 
 	db := bootstrapSQLDatabase(cfg)
+	database.MigrateUp(db)
+
 	httpServer := bootstrapHTTPServer(cfg, db)
 
 	e := make(chan struct{}, 1)
@@ -42,7 +44,7 @@ func run() {
 }
 
 func bootstrapSQLDatabase(cfg config.Config) *sql.DB {
-	sqlDB, err := db.NewPGDatabase(db.PGConfigs{
+	sqlDB, err := database.NewPGDatabase(database.PGConfigs{
 		Host:     cfg.Db.Host,
 		Port:     cfg.Db.Port,
 		User:     cfg.Db.User,

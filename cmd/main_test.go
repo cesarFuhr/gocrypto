@@ -12,12 +12,8 @@ import (
 
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 	"github.com/cesarFuhr/gocrypto/internal/pkg/config"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/cesarFuhr/gocrypto/internal/pkg/database"
 	"github.com/google/uuid"
-
-	// loads the file driver to migrate
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 var httpServer *http.Server
@@ -32,18 +28,18 @@ func deferable(m *testing.M) int {
 		panic(err)
 	}
 
-	db := bootstrapSQLDatabase(cfg)
-	defer db.Close()
+	testdb := bootstrapSQLDatabase(cfg)
+	defer testdb.Close()
 
-	err = runMigrationsUp(db)
-	defer runMigrationsDown(db)
+	err = database.MigrateUp(testdb)
+	defer database.MigrateDown(testdb)
 	if err != nil {
 		panic(err)
 	}
 
-	setupDB(db)
+	setupDB(testdb)
 
-	httpServer = bootstrapHTTPServer(cfg, db)
+	httpServer = bootstrapHTTPServer(cfg, testdb)
 
 	return m.Run()
 }
@@ -73,42 +69,4 @@ func setupDB(db *sql.DB) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func runMigrationsUp(db *sql.DB) error {
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://../internal/pkg/db/migrations",
-		"postgres",
-		driver,
-	)
-	if err != nil {
-		panic(err)
-	}
-	if err := m.Up(); err != nil {
-		if err.Error() == "no change" {
-			return nil
-		}
-		panic(err)
-	}
-	return nil
-}
-
-func runMigrationsDown(db *sql.DB) error {
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://../internal/pkg/db/migrations",
-		"postgres",
-		driver,
-	)
-	if err != nil {
-		panic(err)
-	}
-	if err := m.Down(); err != nil {
-		if err.Error() == "no change" {
-			return nil
-		}
-		panic(err)
-	}
-	return nil
 }
