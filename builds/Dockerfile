@@ -20,14 +20,8 @@ COPY . .
 # Build the application
 RUN go build -o main ./cmd
 
-# Move to /dist directory as the place for resulting binary folder
-WORKDIR /dist
-
-# Copy binary from build to main folder
-RUN cp /build/main -d .
-
 # Export necessary port
 EXPOSE 5000
 
 # Command to run when starting the container
-CMD ["/dist/main"]
+CMD ["/build/main"]
