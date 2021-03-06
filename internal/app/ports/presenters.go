@@ -54,6 +54,7 @@ func replyJSON(w http.ResponseWriter, code int, obj interface{}) {
 }
 
 func internalServerError(w http.ResponseWriter) {
+	w.Header().Set("Content-type", "application/json")
 	w.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(w).Encode(HTTPError{
 		Message: "There was an unexpected error",
