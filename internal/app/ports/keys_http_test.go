@@ -231,7 +231,7 @@ func TestGETKeys(t *testing.T) {
 	t.Run("If key was not found", func(t *testing.T) {
 		t.Run("Should return a 404", func(t *testing.T) {
 			want := http.StatusNotFound
-			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys/notFound"), nil)
+			getRequest, _ := http.NewRequest(http.MethodGet, "/keys/notFound", nil)
 			m["keyID"] = "notFound"
 			response := httptest.NewRecorder()
 
@@ -244,7 +244,7 @@ func TestGETKeys(t *testing.T) {
 	t.Run("If there was any other error", func(t *testing.T) {
 		t.Run("Should return a 500", func(t *testing.T) {
 			want := http.StatusInternalServerError
-			getRequest, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/keys/otherError"), nil)
+			getRequest, _ := http.NewRequest(http.MethodGet, "/keys/otherError", nil)
 			m["keyID"] = "otherError"
 			response := httptest.NewRecorder()
 			h.Get(response, mux.SetURLVars(getRequest, m))

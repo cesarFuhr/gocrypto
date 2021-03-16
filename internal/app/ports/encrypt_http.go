@@ -47,5 +47,4 @@ func (h *encryptHandler) Post(w http.ResponseWriter, r *http.Request) {
 	replyJSON(w, http.StatusOK, HTTPEncrypt{
 		EncryptedData: string(encrypted),
 	})
-	return
 }

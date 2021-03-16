@@ -47,5 +47,4 @@ func (s *decryptHandler) Post(w http.ResponseWriter, r *http.Request) {
 	replyJSON(w, http.StatusOK, HTTPDecrypt{
 		Data: string(decrypted),
 	})
-	return
 }

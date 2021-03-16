@@ -10,8 +10,8 @@ import (
 )
 
 type keyOpts struct {
-	Scope      string `json:"scope"`
-	Expiration string `json:"expiration"`
+	Scope      string `json:"scope" validate:"required,gt=0,lte=50"`
+	Expiration string `json:"expiration" validate:"required,datetime"`
 }
 
 type keyHandler struct {
@@ -46,7 +46,6 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 		replyJSON(w, http.StatusInternalServerError, HTTPError{
 			Message: err.Error(),
 		})
-		return
 	}
 
 	exp, err := time.Parse(time.RFC3339, o.Expiration)
@@ -64,14 +63,13 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	replyJSON(w, http.StatusCreated, NewHTTPCreateKey(key))
-	return
 }
 
 func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id, ok := params["keyID"]
 
-	if ok == false {
+	if !ok {
 		replyJSON(w, http.StatusBadRequest, HTTPError{
 			Message: "missing path param keyID",
 		})
@@ -91,5 +89,4 @@ func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	replyJSON(w, http.StatusOK, NewHTTPCreateKey(key))
-	return
 }
