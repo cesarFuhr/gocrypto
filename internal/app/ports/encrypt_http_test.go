@@ -21,7 +21,7 @@ func (s *CryptoServiceStub) Encrypt(keyID string, m string) ([]byte, error) {
 	if m == "error" {
 		return []byte{}, errors.New("some error")
 	}
-	if keyID == "notFound" {
+	if m == "notFound" {
 		return []byte{}, keys.ErrKeyNotFound
 	}
 	return []byte{10, 10, 10}, nil
@@ -31,7 +31,14 @@ func TestEncrypt(t *testing.T) {
 	cryptoStub := CryptoServiceStub{}
 	h := NewEncryptHandler(&cryptoStub)
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodPost, "/encrypt", nil)
+		keyID := uuid.New().String()
+		data := "testing"
+		requestBody, _ := json.Marshal(map[string]string{
+			"keyID": keyID,
+			"data":  data,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()
 
 		want := http.StatusOK
@@ -41,7 +48,14 @@ func TestEncrypt(t *testing.T) {
 		assertStatus(t, response.Code, want)
 	})
 	t.Run("Should return the correct properties", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodPost, "/encrypt", nil)
+		keyID := uuid.New().String()
+		data := "testing"
+		requestBody, _ := json.Marshal(map[string]string{
+			"keyID": keyID,
+			"data":  data,
+		})
+
+		request, _ := http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()
 
 		h.Post(response, request)
@@ -85,7 +99,8 @@ func TestEncrypt(t *testing.T) {
 	})
 	t.Run("Should return a precondition fail if the key does not exists", func(t *testing.T) {
 		requestBody, _ := json.Marshal(map[string]string{
-			"keyID": "notFound",
+			"keyID": uuid.New().String(),
+			"data":  "notFound",
 		})
 		request, _ := http.NewRequest(http.MethodPost, "/encrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()

@@ -15,7 +15,8 @@ type keyOpts struct {
 }
 
 type keyHandler struct {
-	service keys.KeyService
+	service   keys.KeyService
+	validator keysValidator
 }
 
 // KeyHandler describes a http handler interface
@@ -27,15 +28,15 @@ type KeyHandler interface {
 // NewKeyHandler creates a new http key handler
 func NewKeyHandler(s keys.KeyService) KeyHandler {
 	return &keyHandler{
-		service: s,
+		service:   s,
+		validator: keysValidator{},
 	}
 }
 
 // Post http translator
 func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	var o keyOpts
-	err := decodeJSONBody(r, &o)
-	if err != nil {
+	if err := decodeJSONBody(r, &o); err != nil {
 		var mr *malformedRequest
 		if errors.As(err, &mr) {
 			replyJSON(w, mr.status, HTTPError{
@@ -46,6 +47,14 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 		replyJSON(w, http.StatusInternalServerError, HTTPError{
 			Message: err.Error(),
 		})
+		return
+	}
+
+	if err := h.validator.PostValidator(o); err != nil {
+		replyJSON(w, http.StatusBadRequest, HTTPError{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	exp, err := time.Parse(time.RFC3339, o.Expiration)
@@ -67,11 +76,11 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 
 func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id, ok := params["keyID"]
+	id := params["keyID"]
 
-	if !ok {
+	if err := h.validator.GetValidator(id); err != nil {
 		replyJSON(w, http.StatusBadRequest, HTTPError{
-			Message: "missing path param keyID",
+			Message: err.Error(),
 		})
 		return
 	}

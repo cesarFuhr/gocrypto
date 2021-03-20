@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 type KeyServiceStub struct {
 	CalledWith       []interface{}
 	LastDeliveredKey keys.Key
+	nextError        error
 }
 
 var rsaKey, _ = rsa.GenerateKey(rand.Reader, 4098)
@@ -42,11 +44,8 @@ func (s *KeyServiceStub) CreateKey(scope string, exp time.Time) (keys.Key, error
 
 func (s *KeyServiceStub) FindKey(id string) (keys.Key, error) {
 	s.CalledWith = []interface{}{id}
-	if id == "notFound" {
-		return keys.Key{}, keys.ErrKeyNotFound
-	}
-	if id == "otherError" {
-		return keys.Key{}, errors.New("Any error at all")
+	if s.nextError != nil {
+		return keys.Key{}, s.nextError
 	}
 
 	s.LastDeliveredKey = keys.Key{
@@ -57,6 +56,10 @@ func (s *KeyServiceStub) FindKey(id string) (keys.Key, error) {
 		Priv:       rsaKey,
 	}
 	return s.LastDeliveredKey, nil
+}
+
+func (s *KeyServiceStub) SetErrorFindKey(err error) {
+	s.nextError = err
 }
 
 func (s *KeyServiceStub) FindScopedKey(id string, scope string) (keys.Key, error) {
@@ -172,7 +175,7 @@ func TestPOSTKeys(t *testing.T) {
 		h.Post(response, request)
 
 		assertStatus(t, response.Code, http.StatusBadRequest)
-		assertInsideJSON(t, response.Body, "message", "Invalid: expiration property format")
+		assertErrorMessage(t, response.Body, "message", "expiration is invalid")
 	})
 }
 
@@ -181,8 +184,8 @@ func TestGETKeys(t *testing.T) {
 	h := NewKeyHandler(&keyServiceStub)
 	m := make(map[string]string)
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/keys/123", nil)
-		m["keyID"] = "123"
+		request, _ := http.NewRequest(http.MethodGet, "/keys/f6a4633a-65f5-42f8-a984-38d87e3513ee", nil)
+		m["keyID"] = "f6a4633a-65f5-42f8-a984-38d87e3513ee"
 		response := httptest.NewRecorder()
 
 		want := http.StatusOK
@@ -192,8 +195,8 @@ func TestGETKeys(t *testing.T) {
 		assertStatus(t, response.Code, want)
 	})
 	t.Run("Should return a Key if it was a success", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/keys/123", nil)
-		m["keyID"] = "123"
+		request, _ := http.NewRequest(http.MethodGet, "/keys/f6a4633a-65f5-42f8-a984-38d87e3513ee", nil)
+		m["keyID"] = "f6a4633a-65f5-42f8-a984-38d87e3513ee"
 		response := httptest.NewRecorder()
 
 		wants := []string{"publicKey", "keyID", "expiration"}
@@ -231,8 +234,9 @@ func TestGETKeys(t *testing.T) {
 	t.Run("If key was not found", func(t *testing.T) {
 		t.Run("Should return a 404", func(t *testing.T) {
 			want := http.StatusNotFound
-			getRequest, _ := http.NewRequest(http.MethodGet, "/keys/notFound", nil)
-			m["keyID"] = "notFound"
+			getRequest, _ := http.NewRequest(http.MethodGet, "/keys/f6a4633a-65f5-42f8-a984-38d87e3513ee", nil)
+			m["keyID"] = "f6a4633a-65f5-42f8-a984-38d87e3513ee"
+			keyServiceStub.SetErrorFindKey(keys.ErrKeyNotFound)
 			response := httptest.NewRecorder()
 
 			h.Get(response, mux.SetURLVars(getRequest, m))
@@ -244,8 +248,9 @@ func TestGETKeys(t *testing.T) {
 	t.Run("If there was any other error", func(t *testing.T) {
 		t.Run("Should return a 500", func(t *testing.T) {
 			want := http.StatusInternalServerError
-			getRequest, _ := http.NewRequest(http.MethodGet, "/keys/otherError", nil)
-			m["keyID"] = "otherError"
+			getRequest, _ := http.NewRequest(http.MethodGet, "/keys/f6a4633a-65f5-42f8-a984-38d87e3513ee", nil)
+			m["keyID"] = "f6a4633a-65f5-42f8-a984-38d87e3513ee"
+			keyServiceStub.SetErrorFindKey(errors.New("another error"))
 			response := httptest.NewRecorder()
 			h.Get(response, mux.SetURLVars(getRequest, m))
 
@@ -287,5 +292,17 @@ func assertInsideSlice(t *testing.T, a []interface{}, want interface{}) {
 	}
 	if !has {
 		t.Errorf("Did not found: %v, of type %T in %v", want, want, a)
+	}
+}
+
+func assertErrorMessage(t *testing.T, jBuff *bytes.Buffer, key, toMatch string) {
+	t.Helper()
+	json := map[string]interface{}{}
+	extractJSON(jBuff, json)
+	message := json[key]
+	got := reflect.ValueOf(message)
+
+	if strings.Contains(got.String(), toMatch) {
+		t.Errorf("got %v, want %v", got, toMatch)
 	}
 }

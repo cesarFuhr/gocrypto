@@ -18,19 +18,28 @@ type EncryptHandler interface {
 }
 
 type encryptHandler struct {
-	service crypto.Service
+	service   crypto.Service
+	validator encryptValidator
 }
 
 // NewEncryptHandler creates a new http key handler
 func NewEncryptHandler(s crypto.Service) EncryptHandler {
 	return &encryptHandler{
-		service: s,
+		service:   s,
+		validator: encryptValidator{},
 	}
 }
 
 func (h *encryptHandler) Post(w http.ResponseWriter, r *http.Request) {
 	var o encryptReqBody
 	decodeJSONBody(r, &o)
+
+	if err := h.validator.PostValidator(o); err != nil {
+		replyJSON(w, http.StatusBadRequest, HTTPError{
+			Message: err.Error(),
+		})
+		return
+	}
 
 	encrypted, err := h.service.Encrypt(o.KeyID, o.Data)
 	if err != nil {
