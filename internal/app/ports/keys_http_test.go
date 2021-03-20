@@ -302,7 +302,7 @@ func assertErrorMessage(t *testing.T, jBuff *bytes.Buffer, key, toMatch string) 
 	message := json[key]
 	got := reflect.ValueOf(message)
 
-	if strings.Contains(got.String(), toMatch) {
+	if !strings.Contains(got.String(), toMatch) {
 		t.Errorf("got %v, want %v", got, toMatch)
 	}
 }
