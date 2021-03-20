@@ -18,19 +18,28 @@ type DecryptHandler interface {
 }
 
 type decryptHandler struct {
-	service crypto.Service
+	service   crypto.Service
+	validator decryptValidator
 }
 
 // NewDecryptHandler creates a decrypt http handler
 func NewDecryptHandler(s crypto.Service) DecryptHandler {
 	return &decryptHandler{
-		service: s,
+		validator: decryptValidator{},
+		service:   s,
 	}
 }
 
 func (s *decryptHandler) Post(w http.ResponseWriter, r *http.Request) {
 	var o decryptReqBody
 	decodeJSONBody(r, &o)
+
+	if err := s.validator.PostValidator(o); err != nil {
+		replyJSON(w, http.StatusBadRequest, HTTPError{
+			Message: err.Error(),
+		})
+		return
+	}
 
 	decrypted, err := s.service.Decrypt(o.KeyID, o.EncryptedData)
 	if err != nil {
@@ -47,5 +56,4 @@ func (s *decryptHandler) Post(w http.ResponseWriter, r *http.Request) {
 	replyJSON(w, http.StatusOK, HTTPDecrypt{
 		Data: string(decrypted),
 	})
-	return
 }

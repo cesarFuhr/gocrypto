@@ -7,7 +7,6 @@ import (
 )
 
 type testStruct struct {
-	property string
 }
 
 func TestDecodeJSONBody(t *testing.T) {

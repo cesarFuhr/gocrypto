@@ -10,12 +10,13 @@ import (
 )
 
 type keyOpts struct {
-	Scope      string `json:"scope"`
-	Expiration string `json:"expiration"`
+	Scope      string `json:"scope" validate:"required,gt=0,lte=50"`
+	Expiration string `json:"expiration" validate:"required,datetime"`
 }
 
 type keyHandler struct {
-	service keys.KeyService
+	service   keys.KeyService
+	validator keysValidator
 }
 
 // KeyHandler describes a http handler interface
@@ -27,15 +28,15 @@ type KeyHandler interface {
 // NewKeyHandler creates a new http key handler
 func NewKeyHandler(s keys.KeyService) KeyHandler {
 	return &keyHandler{
-		service: s,
+		service:   s,
+		validator: keysValidator{},
 	}
 }
 
 // Post http translator
 func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	var o keyOpts
-	err := decodeJSONBody(r, &o)
-	if err != nil {
+	if err := decodeJSONBody(r, &o); err != nil {
 		var mr *malformedRequest
 		if errors.As(err, &mr) {
 			replyJSON(w, mr.status, HTTPError{
@@ -44,6 +45,13 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		replyJSON(w, http.StatusInternalServerError, HTTPError{
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if err := h.validator.PostValidator(o); err != nil {
+		replyJSON(w, http.StatusBadRequest, HTTPError{
 			Message: err.Error(),
 		})
 		return
@@ -64,16 +72,15 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	replyJSON(w, http.StatusCreated, NewHTTPCreateKey(key))
-	return
 }
 
 func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id, ok := params["keyID"]
+	id := params["keyID"]
 
-	if ok == false {
+	if err := h.validator.GetValidator(id); err != nil {
 		replyJSON(w, http.StatusBadRequest, HTTPError{
-			Message: "missing path param keyID",
+			Message: err.Error(),
 		})
 		return
 	}
@@ -91,5 +98,4 @@ func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	replyJSON(w, http.StatusOK, NewHTTPCreateKey(key))
-	return
 }

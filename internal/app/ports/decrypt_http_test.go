@@ -16,7 +16,7 @@ func (s *CryptoServiceStub) Decrypt(keyID string, m string) ([]byte, error) {
 	if m == "error" {
 		return []byte{}, errors.New("some error")
 	}
-	if keyID == "notFound" {
+	if m == "notFound" {
 		return []byte{}, keys.ErrKeyNotFound
 	}
 	return []byte{10, 10, 10}, nil
@@ -28,7 +28,7 @@ func TestDecrypt(t *testing.T) {
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
 		requestBody, _ := json.Marshal(decryptReqBody{
 			EncryptedData: "mensagem",
-			KeyID:         "id",
+			KeyID:         "f6a4633a-65f5-42f8-a984-38d87e3513ee",
 		})
 
 		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
@@ -43,7 +43,7 @@ func TestDecrypt(t *testing.T) {
 	t.Run("Should return the correct properties", func(t *testing.T) {
 		requestBody, _ := json.Marshal(decryptReqBody{
 			EncryptedData: "mensagem",
-			KeyID:         "id",
+			KeyID:         "f6a4633a-65f5-42f8-a984-38d87e3513ee",
 		})
 
 		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
@@ -61,19 +61,19 @@ func TestDecrypt(t *testing.T) {
 	t.Run("Should call Decrypt with the right params", func(t *testing.T) {
 		requestBody, _ := json.Marshal(decryptReqBody{
 			EncryptedData: "message",
-			KeyID:         "id",
+			KeyID:         "f6a4633a-65f5-42f8-a984-38d87e3513ee",
 		})
 		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()
 		h.Post(response, request)
 
 		assertInsideSlice(t, cryptoStub.CalledWith, "message")
-		assertInsideSlice(t, cryptoStub.CalledWith, "id")
+		assertInsideSlice(t, cryptoStub.CalledWith, "f6a4633a-65f5-42f8-a984-38d87e3513ee")
 	})
 	t.Run("Should return a internal server error if there was a problem decrypting", func(t *testing.T) {
 		requestBody, _ := json.Marshal(decryptReqBody{
 			EncryptedData: "error",
-			KeyID:         "keyID",
+			KeyID:         "f6a4633a-65f5-42f8-a984-38d87e3513ee",
 		})
 		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()
@@ -84,7 +84,8 @@ func TestDecrypt(t *testing.T) {
 	})
 	t.Run("Should return a precondition fail if the key does not exists", func(t *testing.T) {
 		requestBody, _ := json.Marshal(map[string]string{
-			"keyID": "notFound",
+			"keyID":         "f6a4633a-65f5-42f8-a984-38d87e3513ee",
+			"encryptedData": "notFound",
 		})
 		request, _ := http.NewRequest(http.MethodPost, "/decrypt", bytes.NewBuffer(requestBody))
 		response := httptest.NewRecorder()

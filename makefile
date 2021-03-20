@@ -63,8 +63,8 @@ test-full:
 	docker-compose -f docker-compose.test.yml up --build test
 	docker-compose -f docker-compose.test.yml down
 
-test-unit-watch:
-	watcher -cmd="make unit-test" -keepalive=true
+watch-test:
+	watcher -cmd="make test-unit" -keepalive=true
 
-test-full-watch:
-	watcher -cmd="make full-test" -keepalive=true
+watch-test-full:
+	watcher -cmd="make test-full" -keepalive=true
