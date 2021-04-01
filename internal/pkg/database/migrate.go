@@ -2,52 +2,53 @@ package database
 
 import (
 	"database/sql"
-	"log"
-
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-
-	// loads the file driver to migrate
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"embed"
+	"io/fs"
 )
+
+//go:embed migrations
+var mFS embed.FS
 
 // MigrateUp runs the migrations to setup the db
 func MigrateUp(db *sql.DB) error {
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://internal/pkg/database/migrations",
-		"postgres",
-		driver,
-	)
+	upFilePaths, err := fs.Glob(mFS, "migrations/*.up.sql")
 	if err != nil {
-		panic(err)
+		return err
 	}
-	if err := m.Up(); err != nil {
-		if err.Error() == "no change" {
-			log.Printf("Migrations: no change")
-			return nil
+
+	for _, fp := range upFilePaths {
+		m, err := fs.ReadFile(mFS, fp)
+		if err != nil {
+			return err
 		}
-		panic(err)
+
+		_, err = db.Exec(string(m) + ";")
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
 // MigrateDown runs the migrations to teardown the db
 func MigrateDown(db *sql.DB) error {
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://internal/pkg/database/migrations",
-		"postgres",
-		driver,
-	)
+	downFilePaths, err := fs.Glob(mFS, "migrations/*.down.sql")
 	if err != nil {
-		panic(err)
+		return err
 	}
-	if err := m.Down(); err != nil {
-		if err.Error() == "no change" {
-			return nil
+
+	for _, fp := range downFilePaths {
+		m, err := fs.ReadFile(mFS, fp)
+		if err != nil {
+			return err
 		}
-		panic(err)
+
+		_, err = db.Exec(string(m) + ";")
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
