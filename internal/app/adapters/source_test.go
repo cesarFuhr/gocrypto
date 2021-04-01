@@ -9,7 +9,6 @@ import (
 
 type keyGeneratorStub struct {
 	called int
-	stored int
 	mu     sync.Mutex
 }
 
