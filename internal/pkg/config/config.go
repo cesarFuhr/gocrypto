@@ -20,12 +20,13 @@ type Config struct {
 		Port string `envconfig:"SERVER_PORT"`
 	}
 	Db struct {
-		Host     string `envconfig:"DB_HOST"`
-		Port     int    `envconfig:"DB_PORT"`
-		User     string `envconfig:"DB_USER"`
-		Password string `envconfig:"DB_PASSWORD"`
-		Dbname   string `envconfig:"DB_NAME"`
-		Driver   string `envconfig:"DB_DRIVER"`
+		Host         string `envconfig:"DB_HOST"`
+		Port         int    `envconfig:"DB_PORT"`
+		User         string `envconfig:"DB_USER"`
+		Password     string `envconfig:"DB_PASSWORD"`
+		Dbname       string `envconfig:"DB_NAME"`
+		Driver       string `envconfig:"DB_DRIVER"`
+		MaxOpenConns int    `envconfig:"DB_MAX_OPEN_CONNS"`
 	}
 	App struct {
 		KeySource struct {

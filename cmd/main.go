@@ -45,12 +45,13 @@ func run() {
 
 func bootstrapSQLDatabase(cfg config.Config) *sql.DB {
 	sqlDB, err := database.NewPGDatabase(database.PGConfigs{
-		Host:     cfg.Db.Host,
-		Port:     cfg.Db.Port,
-		User:     cfg.Db.User,
-		Password: cfg.Db.Password,
-		Dbname:   cfg.Db.Dbname,
-		Driver:   cfg.Db.Driver,
+		Host:         cfg.Db.Host,
+		Port:         cfg.Db.Port,
+		User:         cfg.Db.User,
+		Password:     cfg.Db.Password,
+		Dbname:       cfg.Db.Dbname,
+		Driver:       cfg.Db.Driver,
+		MaxOpenConns: cfg.Db.MaxOpenConns,
 	})
 	if err != nil {
 		panic(err)
