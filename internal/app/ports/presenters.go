@@ -23,6 +23,13 @@ type HTTPCreateKey struct {
 	PublicKey  string `json:"publicKey"`
 }
 
+// HTTPCreateKey Http representation of the create key response body
+type HTTPListedKeys struct {
+	KeyID      string `json:"keyID"`
+	Expiration string `json:"expiration"`
+	PublicKey  string `json:"publicKey"`
+}
+
 // NewHTTPCreateKey Builder for the http CreateKey response
 func NewHTTPCreateKey(k keys.Key) HTTPCreateKey {
 	return HTTPCreateKey{
@@ -30,6 +37,20 @@ func NewHTTPCreateKey(k keys.Key) HTTPCreateKey {
 		Expiration: k.Expiration.UTC().Format(time.RFC3339),
 		PublicKey:  formatPublicKey(k.Pub),
 	}
+}
+
+// NewHTTPFindKeys Builder for the http FindKeys response
+func NewHTTPFindKeys(keys []keys.Key) []HTTPListedKeys {
+	listed := []HTTPListedKeys{}
+	for _, k := range keys {
+		listed = append(listed, HTTPListedKeys{
+			KeyID:      k.ID,
+			Expiration: k.Expiration.UTC().Format(time.RFC3339),
+			PublicKey:  formatPublicKey(k.Pub),
+		})
+	}
+
+	return listed
 }
 
 func formatPublicKey(pubKey *rsa.PublicKey) string {

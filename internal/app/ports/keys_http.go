@@ -23,6 +23,7 @@ type keyHandler struct {
 type KeyHandler interface {
 	Post(w http.ResponseWriter, r *http.Request)
 	Get(w http.ResponseWriter, r *http.Request)
+	Find(w http.ResponseWriter, r *http.Request)
 }
 
 // NewKeyHandler creates a new http key handler
@@ -98,4 +99,23 @@ func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	replyJSON(w, http.StatusOK, NewHTTPCreateKey(key))
+}
+
+func (h *keyHandler) Find(w http.ResponseWriter, r *http.Request) {
+	scope := r.URL.Query().Get("scope")
+
+	if err := h.validator.FindValidator(scope); err != nil {
+		replyJSON(w, http.StatusBadRequest, HTTPError{
+			Message: err.Error(),
+		})
+		return
+	}
+
+	key, err := h.service.FindKeysByScope(scope)
+	if err != nil {
+		internalServerError(w)
+		return
+	}
+
+	replyJSON(w, http.StatusOK, NewHTTPFindKeys(key))
 }

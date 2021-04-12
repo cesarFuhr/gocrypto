@@ -70,3 +70,13 @@ func (s *keyService) FindScopedKey(keyID string, scope string) (Key, error) {
 
 	return key, nil
 }
+
+// FindKeysByScope Find a key by ID within the scope
+func (s *keyService) FindKeysByScope(scope string) ([]Key, error) {
+	keys, err := s.Repo.FindKeysByScope(scope)
+	if err != nil {
+		return nil, err
+	}
+
+	return keys, nil
+}

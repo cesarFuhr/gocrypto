@@ -33,6 +33,13 @@ func (v keysValidator) GetValidator(keyID string) error {
 	return nil
 }
 
+func (v keysValidator) FindValidator(scope string) error {
+	if err := scopeV.Validate(scope); err != nil {
+		return err
+	}
+	return nil
+}
+
 type encryptValidator struct{}
 
 func (v encryptValidator) PostValidator(eo encryptReqBody) error {

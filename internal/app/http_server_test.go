@@ -30,6 +30,11 @@ func (h *keStub) Get(w http.ResponseWriter, r *http.Request) {
 	h.G.Called = true
 }
 
+func (h *keStub) Find(w http.ResponseWriter, r *http.Request) {
+	h.G.CalledWith = []interface{}{w, r}
+	h.G.Called = true
+}
+
 type encrypStub struct {
 	P struct {
 		CalledWith []interface{}

@@ -3,6 +3,7 @@ package adapters
 import (
 	"crypto/x509"
 	"database/sql"
+	"log"
 	"time"
 
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
@@ -18,7 +19,7 @@ type InMemoryKeyRepository struct {
 // FindKey finds and returns the requested key
 func (r *InMemoryKeyRepository) FindKey(id string) (keys.Key, error) {
 	key, ok := r.Store[id]
-	if ok == false {
+	if !ok {
 		return keys.Key{}, keys.ErrKeyNotFound
 	}
 	return key, nil
@@ -55,6 +56,9 @@ func (r *SQLKeyRepository) FindKey(id string) (keys.Key, error) {
 	switch err := row.Scan(&k.ID, &k.Scope, &k.Expiration, &priv, &pub); err {
 	case nil:
 		k.Priv, err = x509.ParsePKCS1PrivateKey(priv)
+		if err != nil {
+			return keys.Key{}, err
+		}
 		k.Pub, err = x509.ParsePKCS1PublicKey(pub)
 		if err != nil {
 			return keys.Key{}, err
@@ -65,6 +69,55 @@ func (r *SQLKeyRepository) FindKey(id string) (keys.Key, error) {
 		return keys.Key{}, err
 	}
 	return k, nil
+}
+
+var findKeysByScopeStatement = `
+	SELECT id, scope, expiration, priv, pub 
+		FROM keys 
+		WHERE scope = $1`
+
+// FindKey finds and returns the requested key
+func (r *SQLKeyRepository) FindKeysByScope(scope string) ([]keys.Key, error) {
+	rows, err := r.db.Query(findKeysByScopeStatement, scope)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ks []keys.Key
+
+	for rows.Next() {
+		var (
+			k    keys.Key
+			pub  []byte
+			priv []byte
+		)
+
+		err := rows.Scan(&k.ID, &k.Scope, &k.Expiration, &priv, &pub)
+		if err != nil {
+			return nil, err
+		}
+
+		k.Priv, err = x509.ParsePKCS1PrivateKey(priv)
+		if err != nil {
+			return nil, err
+		}
+		k.Pub, err = x509.ParsePKCS1PublicKey(pub)
+		if err != nil {
+			return nil, err
+		}
+		ks = append(ks, k)
+	}
+
+	if err := rows.Close(); err != nil {
+		log.Println(err)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+	}
+
+	return ks, nil
 }
 
 var insertKeyStatement = `

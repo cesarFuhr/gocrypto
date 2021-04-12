@@ -20,6 +20,14 @@ func (r *KeyRepositoryStub) FindKey(keyID string) (Key, error) {
 	return key, nil
 }
 
+func (r *KeyRepositoryStub) FindKeysByScope(scope string) ([]Key, error) {
+	if scope == "not found" {
+		return nil, nil
+	}
+
+	return []Key{keyStub, keyStub}, nil
+}
+
 func (r *KeyRepositoryStub) InsertKey(key Key) error {
 	r.store[key.ID] = key
 	return nil
@@ -28,7 +36,16 @@ func (r *KeyRepositoryStub) InsertKey(key Key) error {
 type KeySourceStub struct {
 }
 
-var mockKeys, mockErr = rsa.GenerateKey(rand.Reader, 2048)
+var (
+	mockKeys, mockErr = rsa.GenerateKey(rand.Reader, 2048)
+	keyStub           = Key{
+		ID:         "id",
+		Scope:      "scope",
+		Expiration: time.Now(),
+		Priv:       mockKeys,
+		Pub:        &mockKeys.PublicKey,
+	}
+)
 
 func (p *KeySourceStub) Take() (*rsa.PrivateKey, error) {
 	return mockKeys, mockErr
@@ -114,6 +131,26 @@ func TestFindScopedKey(t *testing.T) {
 
 		if err != ErrKeyNotFound {
 			t.Fatalf("was expecting a KeyNotFoundError and didn't received")
+		}
+	})
+}
+
+func TestFindKeysByScope(t *testing.T) {
+	keyStore := keyService{
+		Source: &KeySourceStub{},
+		Repo:   &KeyRepositoryStub{map[string]Key{}},
+	}
+	t.Run("Should return a slice of keypair", func(t *testing.T) {
+		got, _ := keyStore.FindKeysByScope("scope")
+		want := []Key{}
+
+		assertType(t, got, want)
+	})
+	t.Run("Should not return an error if no key was not found", func(t *testing.T) {
+		_, err := keyStore.FindKeysByScope("not found")
+
+		if err != nil {
+			t.Fatalf("was expecting a nil and didn't received")
 		}
 	})
 }

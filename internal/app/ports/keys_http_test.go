@@ -24,6 +24,7 @@ type KeyServiceStub struct {
 	CalledWith       []interface{}
 	LastDeliveredKey keys.Key
 	nextError        error
+	nextFindResult   []keys.Key
 }
 
 var rsaKey, _ = rsa.GenerateKey(rand.Reader, 4098)
@@ -62,6 +63,10 @@ func (s *KeyServiceStub) SetErrorFindKey(err error) {
 	s.nextError = err
 }
 
+func (s *KeyServiceStub) SetErrorFindKeyByScope(err error) {
+	s.nextError = err
+}
+
 func (s *KeyServiceStub) FindScopedKey(id string, scope string) (keys.Key, error) {
 	s.CalledWith = []interface{}{id, scope}
 	if id == "notFound" {
@@ -79,6 +84,25 @@ func (s *KeyServiceStub) FindScopedKey(id string, scope string) (keys.Key, error
 		Priv:       rsaKey,
 	}
 	return s.LastDeliveredKey, nil
+}
+
+func (s *KeyServiceStub) FindKeysByScope(scope string) ([]keys.Key, error) {
+	s.CalledWith = []interface{}{scope}
+	if s.nextError != nil {
+		return nil, s.nextError
+	}
+	if s.nextFindResult != nil {
+		return s.nextFindResult, nil
+	}
+
+	s.LastDeliveredKey = keys.Key{
+		Scope:      "scope",
+		Expiration: time.Now().AddDate(0, 0, 1),
+		ID:         uuid.NewString(),
+		Pub:        &rsaKey.PublicKey,
+		Priv:       rsaKey,
+	}
+	return []keys.Key{s.LastDeliveredKey}, nil
 }
 
 var validReqBody, _ = json.Marshal(keyOpts{"scope", time.Now().UTC().Format(time.RFC3339)})
@@ -253,6 +277,93 @@ func TestGETKeys(t *testing.T) {
 			keyServiceStub.SetErrorFindKey(errors.New("another error"))
 			response := httptest.NewRecorder()
 			h.Get(response, mux.SetURLVars(getRequest, m))
+
+			assertStatus(t, response.Code, want)
+			assertInsideJSON(t, response.Body, "message", "There was an unexpected error")
+		})
+	})
+}
+
+func TestFindKeys(t *testing.T) {
+	keyServiceStub := KeyServiceStub{}
+	h := NewKeyHandler(&keyServiceStub)
+	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodGet, "/keys?scope=scope", nil)
+		response := httptest.NewRecorder()
+
+		want := http.StatusOK
+
+		h.Find(response, request)
+
+		assertStatus(t, response.Code, want)
+	})
+	t.Run("Should return .a list of Key if it was a success", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodGet, "/keys?scope=scope", nil)
+		response := httptest.NewRecorder()
+
+		wants := []string{"publicKey", "keyID", "expiration"}
+
+		h.Find(response, request)
+		respArr := []map[string]interface{}{}
+		json.Unmarshal(response.Body.Bytes(), &respArr)
+
+		for _, want := range wants {
+			for _, e := range respArr {
+				if _, ok := e[want]; ok != true {
+					t.Errorf("does not have the %q prop", want)
+				}
+			}
+		}
+	})
+	t.Run("Should call find Keys by scope with the right params", func(t *testing.T) {
+		request, _ := http.NewRequest(http.MethodGet, "/keys?scope=target", nil)
+		response := httptest.NewRecorder()
+
+		h.Find(response, request)
+
+		assertInsideSlice(t, keyServiceStub.CalledWith, "target")
+	})
+	t.Run("If scope is not well formatted", func(t *testing.T) {
+		want := http.StatusBadRequest
+
+		request, _ := http.NewRequest(http.MethodGet, "/keys?scope=1231231313132313123213131231231313123131313123141414", nil)
+		response := httptest.NewRecorder()
+
+		h.Find(response, request)
+		respErr := HTTPError{}
+		json.Unmarshal(response.Body.Bytes(), &respErr)
+
+		assertStatus(t, response.Code, want)
+		if !strings.Contains(respErr.Message, "scope is invalid") {
+			t.Errorf("got %s, want %s", respErr, "some scope error message")
+		}
+	})
+	t.Run("If no key was found", func(t *testing.T) {
+		t.Run("Should return a 200 with no keys", func(t *testing.T) {
+			want := http.StatusOK
+			getRequest, _ := http.NewRequest(http.MethodGet, "/keys?scope=notFound", nil)
+			response := httptest.NewRecorder()
+
+			keyServiceStub.nextFindResult = []keys.Key{}
+
+			h.Find(response, getRequest)
+			respArr := []map[string]interface{}{}
+			json.Unmarshal(response.Body.Bytes(), &respArr)
+
+			assertStatus(t, response.Code, want)
+			if len(respArr) != 0 {
+				t.Errorf("got %d, want %d", len(respArr), 0)
+			}
+		})
+	})
+	t.Run("If there was any other error", func(t *testing.T) {
+		t.Run("Should return a 500", func(t *testing.T) {
+			want := http.StatusInternalServerError
+			getRequest, _ := http.NewRequest(http.MethodGet, "/keys?scope=scope", nil)
+			keyServiceStub.SetErrorFindKey(errors.New("another error"))
+			response := httptest.NewRecorder()
+
+			h.Find(response, getRequest)
 
 			assertStatus(t, response.Code, want)
 			assertInsideJSON(t, response.Body, "message", "There was an unexpected error")

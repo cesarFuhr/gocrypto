@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS scope_idx ON keys(scope)

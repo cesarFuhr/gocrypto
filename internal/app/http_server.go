@@ -31,6 +31,9 @@ func NewHTTPServer(
 	router.
 		HandleFunc("/keys/{keyID}", kH.Get).
 		Methods(http.MethodGet)
+	router.
+		HandleFunc("/keys", kH.Find).
+		Methods(http.MethodGet)
 
 	router.
 		HandleFunc("/encrypt", eH.Post).

@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var mockKeys, mockErr = rsa.GenerateKey(rand.Reader, 2048)
+var mockKeys, _ = rsa.GenerateKey(rand.Reader, 2048)
 
 func TestMemFindKey(t *testing.T) {
 	keyRepo := InMemoryKeyRepository{map[string]keys.Key{}}
@@ -172,6 +172,76 @@ func TestSQLFindKey(t *testing.T) {
 		_, got := repo.FindKey(key.ID)
 
 		assertValue(t, got, want)
+	})
+}
+
+func TestSQLFindKeysByScope(t *testing.T) {
+	db, mock, _ := sqlmock.New()
+	repo := SQLKeyRepository{db: db}
+	defer db.Close()
+
+	t.Run("calls db.QueryRow with the right params", func(t *testing.T) {
+		mock.ExpectQuery(`
+			SELECT id, scope, expiration, priv, pub
+				FROM keys
+				WHERE scope`).WithArgs(key.Scope)
+
+		repo.FindKeysByScope(key.Scope)
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("SQL expectations failed: %s", err)
+		}
+	})
+
+	t.Run("returns a slice of Key objects", func(t *testing.T) {
+		rows := sqlmock.
+			NewRows([]string{"id", "scope", "expiration", "priv", "pub"}).
+			AddRow(key.ID, key.Scope, key.Expiration,
+				x509.MarshalPKCS1PrivateKey(key.Priv),
+				x509.MarshalPKCS1PublicKey(key.Pub)).
+			AddRow(key.ID, key.Scope, key.Expiration,
+				x509.MarshalPKCS1PrivateKey(key.Priv),
+				x509.MarshalPKCS1PublicKey(key.Pub))
+		mock.
+			ExpectQuery(`
+				SELECT id, scope, expiration, priv, pub
+					FROM keys
+					WHERE scope`).
+			WithArgs(key.Scope).
+			WillReturnRows(rows)
+
+		returnedSlice, err := repo.FindKeysByScope(key.Scope)
+
+		assertValue(t, err, nil)
+		assertValue(t, len(returnedSlice), 2)
+		for _, returned := range returnedSlice {
+			if !reflect.DeepEqual(key, returned) {
+				t.Errorf("want %v, got %v", key, returned)
+			}
+		}
+	})
+
+	t.Run("proxys the error from the sql db", func(t *testing.T) {
+		want := errors.New("an error")
+		mock.ExpectQuery(`
+			SELECT id, scope, expiration, priv, pub
+				FROM keys
+				WHERE scope`).WithArgs(key.Scope).WillReturnError(want)
+
+		_, got := repo.FindKeysByScope(key.Scope)
+
+		assertValue(t, got, want)
+	})
+
+	t.Run("not founding any key, return a empty slice", func(t *testing.T) {
+		mock.ExpectQuery(`
+			SELECT id, scope, expiration, priv, pub
+				FROM keys
+				WHERE scope`).WithArgs(key.Scope).WillReturnRows(sqlmock.NewRows([]string{}))
+
+		got, _ := repo.FindKeysByScope(key.Scope)
+
+		assertType(t, got, []keys.Key{})
 	})
 }
 
