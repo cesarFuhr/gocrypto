@@ -69,12 +69,12 @@ func bootstrapHTTPServer(cfg config.Config, sqlDB *sql.DB) *http.Server {
 	keyHandler := ports.NewKeyHandler(keyService)
 
 	cryptoService := crypto.NewCryptoService(&sqlKeyRepo)
-	encryptHandler := ports.NewEncryptHandler(cryptoService)
-	decryptHandler := ports.NewDecryptHandler(cryptoService)
+	encryptHandler := ports.NewEncryptHandler(&cryptoService)
+	decryptHandler := ports.NewDecryptHandler(&cryptoService)
 
 	logger := logger.NewLogger()
 
-	s := server.NewHTTPServer(logger, keyHandler, encryptHandler, decryptHandler)
+	s := server.NewHTTPServer(logger, &keyHandler, &encryptHandler, &decryptHandler)
 	s.Addr = ":" + cfg.Server.Port
 
 	return s

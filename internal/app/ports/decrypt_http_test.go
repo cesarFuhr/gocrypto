@@ -11,7 +11,11 @@ import (
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 )
 
-func (s *CryptoServiceStub) Decrypt(keyID string, m string) ([]byte, error) {
+type DecryptionServiceStub struct {
+	CalledWith []interface{}
+}
+
+func (s *DecryptionServiceStub) Decrypt(keyID string, m string) ([]byte, error) {
 	s.CalledWith = []interface{}{keyID, m}
 	if m == "error" {
 		return []byte{}, errors.New("some error")
@@ -23,7 +27,7 @@ func (s *CryptoServiceStub) Decrypt(keyID string, m string) ([]byte, error) {
 }
 
 func TestDecrypt(t *testing.T) {
-	cryptoStub := CryptoServiceStub{}
+	cryptoStub := DecryptionServiceStub{}
 	h := NewDecryptHandler(&cryptoStub)
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
 		requestBody, _ := json.Marshal(decryptReqBody{

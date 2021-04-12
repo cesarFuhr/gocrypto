@@ -51,7 +51,7 @@ func TestCryptoEncrypt(t *testing.T) {
 }
 
 func TestCryptoDecrypt(t *testing.T) {
-	crypto := cryptoService{&RepositoryStub{}}
+	crypto := CryptoService{&RepositoryStub{}}
 	t.Run("Should be able to decrypt a encrypted message", func(t *testing.T) {
 		want := "test"
 		encrypted, _ := crypto.Encrypt("id", want)

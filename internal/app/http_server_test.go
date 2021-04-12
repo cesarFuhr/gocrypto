@@ -3,7 +3,6 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 
 	"go.uber.org/zap"
@@ -187,12 +186,5 @@ func assertValue(t *testing.T, got, want interface{}) {
 	t.Helper()
 	if got != want {
 		t.Errorf("want %d, got %d", want, got)
-	}
-}
-
-func assertType(t *testing.T, got, want interface{}) {
-	t.Helper()
-	if reflect.TypeOf(got) != reflect.TypeOf(want) {
-		t.Errorf("want %T, got %T", want, got)
 	}
 }

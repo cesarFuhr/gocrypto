@@ -14,28 +14,28 @@ type keyOpts struct {
 	Expiration string `json:"expiration" validate:"required,datetime"`
 }
 
-type keyHandler struct {
-	service   keys.KeyService
+//
+type KeyHandler struct {
+	service   KeyService
 	validator keysValidator
 }
 
-// KeyHandler describes a http handler interface
-type KeyHandler interface {
-	Post(w http.ResponseWriter, r *http.Request)
-	Get(w http.ResponseWriter, r *http.Request)
-	Find(w http.ResponseWriter, r *http.Request)
+type KeyService interface {
+	CreateKey(string, time.Time) (keys.Key, error)
+	FindKey(string) (keys.Key, error)
+	FindKeysByScope(string) ([]keys.Key, error)
 }
 
 // NewKeyHandler creates a new http key handler
-func NewKeyHandler(s keys.KeyService) KeyHandler {
-	return &keyHandler{
+func NewKeyHandler(s KeyService) KeyHandler {
+	return KeyHandler{
 		service:   s,
 		validator: keysValidator{},
 	}
 }
 
 // Post http translator
-func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
+func (h *KeyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	var o keyOpts
 	if err := decodeJSONBody(r, &o); err != nil {
 		var mr *malformedRequest
@@ -75,7 +75,7 @@ func (h *keyHandler) Post(w http.ResponseWriter, r *http.Request) {
 	replyJSON(w, http.StatusCreated, NewHTTPCreateKey(key))
 }
 
-func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (h *KeyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["keyID"]
 
@@ -101,7 +101,7 @@ func (h *keyHandler) Get(w http.ResponseWriter, r *http.Request) {
 	replyJSON(w, http.StatusOK, NewHTTPCreateKey(key))
 }
 
-func (h *keyHandler) Find(w http.ResponseWriter, r *http.Request) {
+func (h *KeyHandler) Find(w http.ResponseWriter, r *http.Request) {
 	scope := r.URL.Query().Get("scope")
 
 	if err := h.validator.FindValidator(scope); err != nil {

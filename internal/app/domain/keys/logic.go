@@ -8,21 +8,21 @@ import (
 )
 
 // KeyService Stores keys giving scopes and type
-type keyService struct {
+type KeyService struct {
 	Source KeySource
 	Repo   KeyRepository
 }
 
 // NewKeyService creates a new KeyService
-func NewKeyService(s KeySource, r KeyRepository) KeyService {
-	return &keyService{
+func NewKeyService(s KeySource, r KeyRepository) *KeyService {
+	return &KeyService{
 		Source: s,
 		Repo:   r,
 	}
 }
 
 // CreateKey Creates a Key, scoping it and setting the expiration
-func (s *keyService) CreateKey(scope string, expiration time.Time) (Key, error) {
+func (s *KeyService) CreateKey(scope string, expiration time.Time) (Key, error) {
 	newKey, _ := s.Source.Take()
 	key := Key{
 		Priv:       newKey,
@@ -47,7 +47,7 @@ var (
 )
 
 // FindKey Finds a key by ID
-func (s *keyService) FindKey(keyID string) (Key, error) {
+func (s *KeyService) FindKey(keyID string) (Key, error) {
 	key, err := s.Repo.FindKey(keyID)
 	if err != nil {
 		if err == ErrKeyNotFound {
@@ -59,7 +59,7 @@ func (s *keyService) FindKey(keyID string) (Key, error) {
 }
 
 // FindScopedKey Find a key by ID within the scope
-func (s *keyService) FindScopedKey(keyID string, scope string) (Key, error) {
+func (s *KeyService) FindScopedKey(keyID string, scope string) (Key, error) {
 	key, err := s.FindKey(keyID)
 	if err != nil {
 		return Key{}, err
@@ -72,7 +72,7 @@ func (s *keyService) FindScopedKey(keyID string, scope string) (Key, error) {
 }
 
 // FindKeysByScope Find a key by ID within the scope
-func (s *keyService) FindKeysByScope(scope string) ([]Key, error) {
+func (s *KeyService) FindKeysByScope(scope string) ([]Key, error) {
 	keys, err := s.Repo.FindKeysByScope(scope)
 	if err != nil {
 		return nil, err

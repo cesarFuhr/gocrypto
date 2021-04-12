@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 )
 
-type CryptoServiceStub struct {
+type EncryptionServiceStub struct {
 	CalledWith []interface{}
 }
 
-func (s *CryptoServiceStub) Encrypt(keyID string, m string) ([]byte, error) {
+func (s *EncryptionServiceStub) Encrypt(keyID string, m string) ([]byte, error) {
 	s.CalledWith = []interface{}{keyID, m}
 	if m == "error" {
 		return []byte{}, errors.New("some error")
@@ -28,7 +28,7 @@ func (s *CryptoServiceStub) Encrypt(keyID string, m string) ([]byte, error) {
 }
 
 func TestEncrypt(t *testing.T) {
-	cryptoStub := CryptoServiceStub{}
+	cryptoStub := EncryptionServiceStub{}
 	h := NewEncryptHandler(&cryptoStub)
 	t.Run("Should return a 200 if it was a success", func(t *testing.T) {
 		keyID := uuid.New().String()

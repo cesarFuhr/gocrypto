@@ -2,8 +2,8 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
 github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
-github.com/cesarFuhr/validator v0.0.0-20210320190507-ef7b4988f4fd h1:TbhZG0T8lk9KPVoC4DtVcCn9koSYh2Hzj2dsD9E7CLw=
-github.com/cesarFuhr/validator v0.0.0-20210320190507-ef7b4988f4fd/go.mod h1:oBE3Llw04/EE9ro+nt5HoPr8rm1brWcjQFGbCpiAIhg=
+github.com/cesarFuhr/validator v0.0.0-20210412150353-0279edf63b16 h1:N48y/z526eAcA1aEGeeqX8LJILN3P6fhgEk7L+0Fbl8=
+github.com/cesarFuhr/validator v0.0.0-20210412150353-0279edf63b16/go.mod h1:oBE3Llw04/EE9ro+nt5HoPr8rm1brWcjQFGbCpiAIhg=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

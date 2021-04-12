@@ -3,7 +3,6 @@ package server
 import (
 	"net/http"
 
-	"github.com/cesarFuhr/gocrypto/internal/app/ports"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
@@ -16,9 +15,9 @@ type HTTPLogger interface {
 // NewHTTPServer creates a new http handler
 func NewHTTPServer(
 	l HTTPLogger,
-	kH ports.KeyHandler,
-	eH ports.EncryptHandler,
-	dH ports.DecryptHandler,
+	kH KeyHandler,
+	eH EncryptHandler,
+	dH DecryptHandler,
 ) *http.Server {
 	router := mux.NewRouter()
 	logger := newLoggerMiddleware(l)
@@ -46,4 +45,18 @@ func NewHTTPServer(
 	return &http.Server{
 		Handler: router,
 	}
+}
+
+type KeyHandler interface {
+	Post(http.ResponseWriter, *http.Request)
+	Get(http.ResponseWriter, *http.Request)
+	Find(http.ResponseWriter, *http.Request)
+}
+
+type EncryptHandler interface {
+	Post(http.ResponseWriter, *http.Request)
+}
+
+type DecryptHandler interface {
+	Post(http.ResponseWriter, *http.Request)
 }

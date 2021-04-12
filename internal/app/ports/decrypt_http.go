@@ -3,7 +3,6 @@ package ports
 import (
 	"net/http"
 
-	"github.com/cesarFuhr/gocrypto/internal/app/domain/crypto"
 	"github.com/cesarFuhr/gocrypto/internal/app/domain/keys"
 )
 
@@ -12,25 +11,24 @@ type decryptReqBody struct {
 	EncryptedData string `json:"encryptedData"`
 }
 
-// DecryptHandler decrypt http handler
-type DecryptHandler interface {
-	Post(w http.ResponseWriter, r *http.Request)
-}
-
-type decryptHandler struct {
-	service   crypto.Service
+type DecryptHandler struct {
+	service   DecryptionService
 	validator decryptValidator
 }
 
+type DecryptionService interface {
+	Decrypt(string, string) ([]byte, error)
+}
+
 // NewDecryptHandler creates a decrypt http handler
-func NewDecryptHandler(s crypto.Service) DecryptHandler {
-	return &decryptHandler{
+func NewDecryptHandler(s DecryptionService) DecryptHandler {
+	return DecryptHandler{
 		validator: decryptValidator{},
 		service:   s,
 	}
 }
 
-func (s *decryptHandler) Post(w http.ResponseWriter, r *http.Request) {
+func (s *DecryptHandler) Post(w http.ResponseWriter, r *http.Request) {
 	var o decryptReqBody
 	decodeJSONBody(r, &o)
 

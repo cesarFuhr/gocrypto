@@ -5,19 +5,19 @@ import (
 	"github.com/lestrrat-go/jwx/jwe"
 )
 
-type cryptoService struct {
+type CryptoService struct {
 	repo Repository
 }
 
 // NewCryptoService creates a new crypto service
-func NewCryptoService(r Repository) Service {
-	return &cryptoService{
+func NewCryptoService(r Repository) CryptoService {
+	return CryptoService{
 		repo: r,
 	}
 }
 
 // Encrypt Encrypts the content in a JWE Wrapper
-func (s *cryptoService) Encrypt(keyID string, m string) ([]byte, error) {
+func (s *CryptoService) Encrypt(keyID string, m string) ([]byte, error) {
 	key, err := s.repo.FindKey(keyID)
 	if err != nil {
 		return []byte{}, err
@@ -31,7 +31,7 @@ func (s *cryptoService) Encrypt(keyID string, m string) ([]byte, error) {
 }
 
 // Decrypt Decrypts the JWE and return de message
-func (s *cryptoService) Decrypt(keyID string, m string) ([]byte, error) {
+func (s *CryptoService) Decrypt(keyID string, m string) ([]byte, error) {
 	key, err := s.repo.FindKey(keyID)
 	if err != nil {
 		return []byte{}, err
