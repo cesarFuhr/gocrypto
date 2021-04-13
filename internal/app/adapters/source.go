@@ -44,7 +44,7 @@ type PoolKeySource struct {
 
 // Take Takes one key from the source
 func (s *PoolKeySource) Take() (*rsa.PrivateKey, error) {
-	go s.addKeyToPoll()
+	defer func() { go s.addKeyToPoll() }()
 	if len(s.Pool) > 0 {
 		k := <-s.Pool
 		return k, nil
